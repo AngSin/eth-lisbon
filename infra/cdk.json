@@ -1,0 +1,13 @@
+{
+  "app": "node dist/bin/app.js",
+  "context": {
+    "@aws-cdk/core:defaultCrossStackReferences": "strong",
+    "hostedZoneId": "Z091724633RFYDHQ5WNFL",
+    "hostedZoneName": "nomadfinance.io",
+    "frontendDomainName": "testnet.nomadfinance.io",
+    "apiDomainName": "testnet-api.nomadfinance.io",
+    "suiNetwork": "testnet",
+    "suiRpcUrl": "https://fullnode.testnet.sui.io:443",
+    "suiPackageId": "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142"
+  }
+}
