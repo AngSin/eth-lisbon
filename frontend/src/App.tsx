@@ -188,6 +188,7 @@ function App() {
             <BorrowView
               offers={offers}
               loading={loading}
+              marketBtcUsd={marketBtcUsd}
               onOpenOffer={(offer) => {
                 setSelectedOffer(offer);
                 setSelectedLoan(null);
@@ -245,6 +246,7 @@ function App() {
               loan={selectedLoan}
               loans={loans}
               config={config}
+              marketBtcUsd={marketBtcUsd}
               accountAddress={account?.address}
               onSelectLoan={setSelectedLoan}
               onAccept={(offer) =>
@@ -286,6 +288,7 @@ function App() {
 function BorrowView(props: {
   offers: LoanOffer[];
   loading: boolean;
+  marketBtcUsd: string | null;
   onOpenOffer: (offer: LoanOffer) => void;
 }) {
   return (
@@ -303,7 +306,6 @@ function BorrowView(props: {
                 <th>Total due</th>
                 <th>Duration</th>
                 <th>Lender</th>
-                <th>Risk</th>
                 <th></th>
               </tr>
             </thead>
@@ -312,12 +314,11 @@ function BorrowView(props: {
                 <tr key={offer.offerId}>
                   <td>{formatUnits(offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatUnits(offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)}</td>
-                  <td>{formatBps(offer.startingLtvBps)}</td>
+                  <td>{formatOfferLtv(offer, props.marketBtcUsd)}</td>
                   <td>{formatUnits(offer.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatUnits(offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatDuration(offer.durationMs)}</td>
                   <td>{shortAddress(offer.lender)}</td>
-                  <td><RiskBadge risk={offer.riskLevel ?? "medium"} /></td>
                   <td>
                     <button className="pill small" onClick={() => props.onOpenOffer(offer)}>
                       Preview <ArrowRight size={15} />
@@ -327,7 +328,7 @@ function BorrowView(props: {
               ))}
               {!props.loading && props.offers.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="table-empty">No open offers indexed</td>
+                  <td colSpan={8} className="table-empty">No open offers indexed</td>
                 </tr>
               )}
             </tbody>
@@ -503,6 +504,7 @@ function DetailView(props: {
   loan: Loan | null;
   loans: Loan[];
   config: AppConfig;
+  marketBtcUsd: string | null;
   accountAddress?: string;
   onSelectLoan: (loan: Loan) => void;
   onAccept: (offer: LoanOffer) => void;
@@ -570,7 +572,7 @@ function DetailView(props: {
                 ["Lender", shortAddress(offer.lender)],
                 ["Principal", formatUnits(offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
                 ["Collateral", formatUnits(offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
-                ["LTV", formatBps(offer.startingLtvBps)],
+                ["LTV", formatOfferLtv(offer, props.marketBtcUsd)],
                 ["Interest", formatUnits(offer.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
                 ["Total due", formatUnits(offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
                 ["Duration", formatDuration(offer.durationMs)],
@@ -769,6 +771,26 @@ function formatUsdPrice(input: string): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatOfferLtv(offer: LoanOffer, marketBtcUsd: string | null): string {
+  const startingLtvBps = offer.startingLtvBps ?? calculateOfferLtvBps(offer, marketBtcUsd);
+  return formatBps(startingLtvBps);
+}
+
+function calculateOfferLtvBps(offer: LoanOffer, marketBtcUsd: string | null): number | undefined {
+  if (!marketBtcUsd) return undefined;
+  try {
+    const principalAmount = BigInt(offer.principalAmount);
+    const collateralAmount = BigInt(offer.collateralRequired);
+    const btcUsdPrice = parseUnits(marketBtcUsd, PRINCIPAL_DECIMALS);
+    if (principalAmount <= 0n || collateralAmount <= 0n || btcUsdPrice <= 0n) return undefined;
+    const collateralUsd = (collateralAmount * btcUsdPrice) / 10n ** BigInt(COLLATERAL_DECIMALS);
+    if (collateralUsd <= 0n) return undefined;
+    return Number((principalAmount * 10_000n) / collateralUsd);
+  } catch {
+    return undefined;
+  }
 }
 
 function decimalInputWithinLimit(input: string, maxDecimals: number): boolean {
