@@ -9,5 +9,25 @@
 
 The publish transaction only created the immutable package and the deployer-owned
 upgrade capability. Initialize the shared registry in a separate transaction with
-`nomad_loans::protocol::init_registry<DUSDC, HBTC>` after the concrete testnet
-DUSDC and hBTC coin types are selected.
+`nomad_loans::protocol::init_registry<PRINCIPAL, COLLATERAL>` after the
+concrete principal and collateral coin types are selected.
+
+## App Deployment
+
+Deploy the backend and frontend together with:
+
+```bash
+bash ./deploy.sh
+```
+
+The script defaults to `AWS_PROFILE=unnatural-selection`, the latest published
+Sui package in `move/Published.toml`, Circle Sui Testnet USDC as principal, and
+Hashi Sui Testnet hBTC as collateral. If `SUI_REGISTRY_OBJECT_ID` is not present
+in `.env`, the script initializes the registry and stores the new object ID.
+
+Override any value by prefixing the command with env vars or passing CDK context:
+
+```bash
+AWS_PROFILE=other-profile bash ./deploy.sh \
+  -c inodraWebhookSecretsSecretName=<SECRET_NAME>
+```
