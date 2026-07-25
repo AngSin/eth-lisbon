@@ -14,7 +14,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fetchAccountLoans, fetchConfig, fetchOffers } from "./api";
-import { DUSDC_DECIMALS, HBTC_DECIMALS } from "./config";
+import {
+  COLLATERAL_DECIMALS,
+  COLLATERAL_SYMBOL,
+  PRINCIPAL_DECIMALS,
+  PRINCIPAL_SYMBOL,
+} from "./config";
 import { dateTime, formatBps, formatDuration, formatUnits, parseUnits, shortAddress } from "./format";
 import { localRiskScore } from "./risk";
 import {
@@ -173,8 +178,8 @@ function App() {
               onAccept={(offer) =>
                 execute(async () => {
                   if (!account) throw new Error("Connect a wallet first");
-                  const balance = await getCoinBalance(suiClient, account.address, config.hbtcCoinType);
-                  if (balance < BigInt(offer.collateralRequired)) throw new Error("Insufficient hBTC balance");
+                  const balance = await getCoinBalance(suiClient, account.address, config.collateralCoinType);
+                  if (balance < BigInt(offer.collateralRequired)) throw new Error("Insufficient collateral balance");
                   const tx = await buildAcceptOfferTx({ client: suiClient, account: account.address, config, offer });
                   return await signAndExecute.mutateAsync({ transaction: tx });
                 })
@@ -199,9 +204,9 @@ function App() {
               onCreate={(form) =>
                 execute(async () => {
                   if (!account) throw new Error("Connect a wallet first");
-                  const principalAmount = parseUnits(form.principal, DUSDC_DECIMALS);
-                  const fixedInterestAmount = parseUnits(form.interest, DUSDC_DECIMALS);
-                  const collateralRequired = parseUnits(form.collateral, HBTC_DECIMALS);
+                  const principalAmount = parseUnits(form.principal, PRINCIPAL_DECIMALS);
+                  const fixedInterestAmount = parseUnits(form.interest, PRINCIPAL_DECIMALS);
+                  const collateralRequired = parseUnits(form.collateral, COLLATERAL_DECIMALS);
                   const durationMs = Number(BigInt(form.durationDays) * 86_400_000n);
                   const expiresAtMs = Number(BigInt(Date.now()) + BigInt(form.expiresDays) * 86_400_000n);
                   const tx = await buildCreateOfferTx({
@@ -287,11 +292,11 @@ function BorrowView(props: {
             <tbody>
               {props.offers.map((offer) => (
                 <tr key={offer.offerId}>
-                  <td>{formatUnits(offer.principalAmount, DUSDC_DECIMALS, "DUSDC")}</td>
-                  <td>{formatUnits(offer.collateralRequired, HBTC_DECIMALS, "hBTC")}</td>
+                  <td>{formatUnits(offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
+                  <td>{formatUnits(offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)}</td>
                   <td>{formatBps(offer.startingLtvBps)}</td>
-                  <td>{formatUnits(offer.fixedInterestAmount, DUSDC_DECIMALS, "DUSDC")}</td>
-                  <td>{formatUnits(offer.totalDueAmount, DUSDC_DECIMALS, "DUSDC")}</td>
+                  <td>{formatUnits(offer.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
+                  <td>{formatUnits(offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatDuration(offer.durationMs)}</td>
                   <td>{dateTime(Date.now() + offer.durationMs)}</td>
                   <td>{shortAddress(offer.lender)}</td>
@@ -326,12 +331,12 @@ function OfferPreview(props: {
   const [balance, setBalance] = useState<bigint | null>(null);
   const client = useSuiClient();
   useEffect(() => {
-    if (!props.accountAddress || !props.config.hbtcCoinType || !props.offer) {
+    if (!props.accountAddress || !props.config.collateralCoinType || !props.offer) {
       setBalance(null);
       return;
     }
-    void getCoinBalance(client, props.accountAddress, props.config.hbtcCoinType).then(setBalance).catch(() => setBalance(null));
-  }, [client, props.accountAddress, props.config.hbtcCoinType, props.offer?.offerId]);
+    void getCoinBalance(client, props.accountAddress, props.config.collateralCoinType).then(setBalance).catch(() => setBalance(null));
+  }, [client, props.accountAddress, props.config.collateralCoinType, props.offer?.offerId]);
 
   if (!props.offer) {
     return <aside className="panel side-panel empty-state">Select an offer</aside>;
@@ -342,11 +347,11 @@ function OfferPreview(props: {
       <SectionHeader icon={<Wallet size={20} />} title="Accept preview" />
       <DetailGrid
         rows={[
-          ["Principal", formatUnits(props.offer.principalAmount, DUSDC_DECIMALS, "DUSDC")],
-          ["Collateral", formatUnits(props.offer.collateralRequired, HBTC_DECIMALS, "hBTC")],
-          ["Total due", formatUnits(props.offer.totalDueAmount, DUSDC_DECIMALS, "DUSDC")],
+          ["Principal", formatUnits(props.offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+          ["Collateral", formatUnits(props.offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
+          ["Total due", formatUnits(props.offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
           ["Maturity", dateTime(Date.now() + props.offer.durationMs)],
-          ["hBTC balance", balance === null ? "n/a" : formatUnits(balance, HBTC_DECIMALS, "hBTC")],
+          ["Collateral balance", balance === null ? "n/a" : formatUnits(balance, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
         ]}
       />
       <WarningBlock risk={props.offer.riskLevel ?? "medium"} />
@@ -370,11 +375,11 @@ function LendView(props: {
   const risk = useMemo(() => {
     try {
       return localRiskScore({
-        principalAmount: parseUnits(form.principal, DUSDC_DECIMALS),
-        fixedInterestAmount: parseUnits(form.interest, DUSDC_DECIMALS),
-        collateralAmount: parseUnits(form.collateral, HBTC_DECIMALS),
+        principalAmount: parseUnits(form.principal, PRINCIPAL_DECIMALS),
+        fixedInterestAmount: parseUnits(form.interest, PRINCIPAL_DECIMALS),
+        collateralAmount: parseUnits(form.collateral, COLLATERAL_DECIMALS),
         durationMs: Number(BigInt(form.durationDays || "0") * 86_400_000n),
-        btcUsdPrice: parseUnits(form.btcUsd, DUSDC_DECIMALS),
+        btcUsdPrice: parseUnits(form.btcUsd, PRINCIPAL_DECIMALS),
       });
     } catch {
       return null;
@@ -394,8 +399,8 @@ function LendView(props: {
       >
         <SectionHeader icon={<Banknote size={20} />} title="Lend" />
         <div className="form-grid">
-          <TextField label="DUSDC amount" value={form.principal} onChange={(principal) => setForm((prev) => ({ ...prev, principal }))} />
-          <TextField label="hBTC collateral" value={form.collateral} onChange={(collateral) => setForm((prev) => ({ ...prev, collateral }))} />
+          <TextField label={`Principal amount (${PRINCIPAL_SYMBOL})`} value={form.principal} onChange={(principal) => setForm((prev) => ({ ...prev, principal }))} />
+          <TextField label={`Collateral amount (${COLLATERAL_SYMBOL})`} value={form.collateral} onChange={(collateral) => setForm((prev) => ({ ...prev, collateral }))} />
           <TextField label="Fixed interest" value={form.interest} onChange={(interest) => setForm((prev) => ({ ...prev, interest }))} />
           <TextField label="Duration days" value={form.durationDays} onChange={(durationDays) => setForm((prev) => ({ ...prev, durationDays }))} />
           <TextField label="Offer expiry days" value={form.expiresDays} onChange={(expiresDays) => setForm((prev) => ({ ...prev, expiresDays }))} />
@@ -440,9 +445,9 @@ function DetailView(props: {
                 ["Loan", loan.loanId],
                 ["Borrower", shortAddress(loan.borrower)],
                 ["Lender", shortAddress(loan.lender)],
-                ["Principal", formatUnits(loan.principalAmount, DUSDC_DECIMALS, "DUSDC")],
-                ["Collateral", formatUnits(loan.collateralAmount, HBTC_DECIMALS, "hBTC")],
-                ["Total due", formatUnits(loan.totalDueAmount, DUSDC_DECIMALS, "DUSDC")],
+                ["Principal", formatUnits(loan.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+                ["Collateral", formatUnits(loan.collateralAmount, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
+                ["Total due", formatUnits(loan.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
                 ["Maturity", dateTime(loan.maturityMs)],
                 ["Status", loan.status],
               ]}
@@ -470,8 +475,8 @@ function DetailView(props: {
               rows={[
                 ["Offer", props.offer.offerId],
                 ["Lender", shortAddress(props.offer.lender)],
-                ["Principal", formatUnits(props.offer.principalAmount, DUSDC_DECIMALS, "DUSDC")],
-                ["Collateral", formatUnits(props.offer.collateralRequired, HBTC_DECIMALS, "hBTC")],
+                ["Principal", formatUnits(props.offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+                ["Collateral", formatUnits(props.offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
                 ["Status", props.offer.status],
               ]}
             />
@@ -501,7 +506,7 @@ function LoanList(props: { loans: Loan[]; onOpen: (loan: Loan) => void }) {
     <div className="loan-list">
       {props.loans.map((loan) => (
         <button key={loan.loanId} className="loan-row" onClick={() => props.onOpen(loan)}>
-          <span>{formatUnits(loan.principalAmount, DUSDC_DECIMALS, "DUSDC")}</span>
+          <span>{formatUnits(loan.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</span>
           <span>{dateTime(loan.maturityMs)}</span>
           <StatusPill status={loan.status} />
         </button>
@@ -516,7 +521,7 @@ function OfferList(props: { offers: LoanOffer[]; onOpen: (offer: LoanOffer) => v
     <div className="loan-list">
       {props.offers.map((offer) => (
         <button key={offer.offerId} className="loan-row" onClick={() => props.onOpen(offer)}>
-          <span>{formatUnits(offer.principalAmount, DUSDC_DECIMALS, "DUSDC")}</span>
+          <span>{formatUnits(offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</span>
           <span>{formatDuration(offer.durationMs)}</span>
           <StatusPill status={offer.status} />
         </button>

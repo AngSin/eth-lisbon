@@ -8,8 +8,8 @@ export interface AppConfig {
   suiRpcUrl: string;
   suiPackageId: string;
   suiRegistryObjectId: string;
-  hbtcCoinType: string;
-  dusdcCoinType: string;
+  collateralCoinType: string;
+  principalCoinType: string;
 }
 
 export interface LoanOffer {

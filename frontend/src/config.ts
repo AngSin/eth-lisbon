@@ -9,10 +9,18 @@ export const FALLBACK_CONFIG: AppConfig = {
   suiRpcUrl: "https://fullnode.testnet.sui.io:443",
   suiPackageId: "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
   suiRegistryObjectId: import.meta.env.VITE_SUI_REGISTRY_OBJECT_ID ?? "",
-  hbtcCoinType: import.meta.env.VITE_HBTC_COIN_TYPE ?? "",
-  dusdcCoinType: import.meta.env.VITE_DUSDC_COIN_TYPE ?? "",
+  collateralCoinType:
+    import.meta.env.VITE_COLLATERAL_COIN_TYPE ??
+    import.meta.env.VITE_HBTC_COIN_TYPE ??
+    "",
+  principalCoinType:
+    import.meta.env.VITE_PRINCIPAL_COIN_TYPE ??
+    import.meta.env.VITE_DUSDC_COIN_TYPE ??
+    "",
 };
 
 export const CLOCK_OBJECT_ID = "0x6";
-export const DUSDC_DECIMALS = 6;
-export const HBTC_DECIMALS = 8;
+export const PRINCIPAL_DECIMALS = Number(import.meta.env.VITE_PRINCIPAL_DECIMALS ?? "6");
+export const COLLATERAL_DECIMALS = Number(import.meta.env.VITE_COLLATERAL_DECIMALS ?? "8");
+export const PRINCIPAL_SYMBOL = import.meta.env.VITE_PRINCIPAL_SYMBOL ?? "USDC";
+export const COLLATERAL_SYMBOL = import.meta.env.VITE_COLLATERAL_SYMBOL ?? "hBTC";

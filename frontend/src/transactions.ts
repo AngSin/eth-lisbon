@@ -14,11 +14,11 @@ export async function buildCreateOfferTx(input: {
   expiresAtMs: number;
 }): Promise<Transaction> {
   ensureConfigured(input.config);
-  const coinId = await findCoin(input.client, input.account, input.config.dusdcCoinType, input.principalAmount);
+  const coinId = await findCoin(input.client, input.account, input.config.principalCoinType, input.principalAmount);
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::create_offer`,
-    typeArguments: [input.config.dusdcCoinType, input.config.hbtcCoinType],
+    typeArguments: [input.config.principalCoinType, input.config.collateralCoinType],
     arguments: [
       tx.object(input.config.suiRegistryObjectId),
       tx.object(coinId),
@@ -43,13 +43,13 @@ export async function buildAcceptOfferTx(input: {
   const coinId = await findCoin(
     input.client,
     input.account,
-    input.config.hbtcCoinType,
+    input.config.collateralCoinType,
     BigInt(input.offer.collateralRequired),
   );
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::accept_offer`,
-    typeArguments: [input.config.dusdcCoinType, input.config.hbtcCoinType],
+    typeArguments: [input.config.principalCoinType, input.config.collateralCoinType],
     arguments: [
       tx.object(input.config.suiRegistryObjectId),
       tx.object(input.offer.offerObjectId),
@@ -65,7 +65,7 @@ export function buildCancelOfferTx(config: AppConfig, offer: LoanOffer): Transac
   const tx = new Transaction();
   tx.moveCall({
     target: `${config.suiPackageId}::protocol::cancel_offer`,
-    typeArguments: [config.dusdcCoinType, config.hbtcCoinType],
+    typeArguments: [config.principalCoinType, config.collateralCoinType],
     arguments: [tx.object(offer.offerObjectId), tx.object(CLOCK_OBJECT_ID)],
   });
   return tx;
@@ -78,11 +78,11 @@ export async function buildRepayTx(input: {
   loan: Loan;
 }): Promise<Transaction> {
   ensureConfigured(input.config);
-  const coinId = await findCoin(input.client, input.account, input.config.dusdcCoinType, BigInt(input.loan.totalDueAmount));
+  const coinId = await findCoin(input.client, input.account, input.config.principalCoinType, BigInt(input.loan.totalDueAmount));
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::repay`,
-    typeArguments: [input.config.dusdcCoinType, input.config.hbtcCoinType],
+    typeArguments: [input.config.principalCoinType, input.config.collateralCoinType],
     arguments: [tx.object(input.loan.loanObjectId), tx.object(coinId), tx.object(CLOCK_OBJECT_ID)],
   });
   return tx;
@@ -93,7 +93,7 @@ export function buildClaimDefaultTx(config: AppConfig, loan: Loan): Transaction 
   const tx = new Transaction();
   tx.moveCall({
     target: `${config.suiPackageId}::protocol::claim_default`,
-    typeArguments: [config.dusdcCoinType, config.hbtcCoinType],
+    typeArguments: [config.principalCoinType, config.collateralCoinType],
     arguments: [tx.object(loan.loanObjectId), tx.object(CLOCK_OBJECT_ID)],
   });
   return tx;
@@ -122,7 +122,7 @@ async function findCoin(
 }
 
 function ensureConfigured(config: AppConfig): void {
-  if (!config.suiRegistryObjectId || !config.hbtcCoinType || !config.dusdcCoinType) {
+  if (!config.suiRegistryObjectId || !config.collateralCoinType || !config.principalCoinType) {
     throw new Error("Sui registry and coin types must be configured before signing");
   }
 }
