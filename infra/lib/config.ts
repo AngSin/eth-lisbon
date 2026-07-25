@@ -37,7 +37,7 @@ export function loadDeploymentConfig(app: App): DeploymentConfig {
     suiRpcUrl: read("suiRpcUrl", "https://fullnode.testnet.sui.io:443"),
     suiPackageId: read(
       "suiPackageId",
-      "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
+      "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74",
     ),
     suiRegistryObjectId: read("suiRegistryObjectId"),
     collateralCoinType: read("collateralCoinType", read("hbtcCoinType")),

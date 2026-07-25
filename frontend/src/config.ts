@@ -7,7 +7,7 @@ export const FALLBACK_CONFIG: AppConfig = {
   apiVersion: "2026-07-25",
   suiNetwork: "testnet",
   suiRpcUrl: "https://fullnode.testnet.sui.io:443",
-  suiPackageId: "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
+  suiPackageId: "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74",
   suiRegistryObjectId: import.meta.env.VITE_SUI_REGISTRY_OBJECT_ID ?? "",
   collateralCoinType:
     import.meta.env.VITE_COLLATERAL_COIN_TYPE ??

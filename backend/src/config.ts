@@ -23,7 +23,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     suiRpcUrl: env.SUI_RPC_URL ?? "https://fullnode.testnet.sui.io:443",
     suiPackageId:
       env.SUI_PACKAGE_ID ??
-      "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
+      "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74",
     suiRegistryObjectId: env.SUI_REGISTRY_OBJECT_ID ?? "",
     collateralCoinType:
       env.COLLATERAL_COIN_TYPE ?? env.HBTC_COIN_TYPE ?? "",
