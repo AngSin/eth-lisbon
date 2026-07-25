@@ -3,6 +3,10 @@ import type { App } from "aws-cdk-lib";
 export interface DeploymentConfig {
   hostedZoneId: string;
   hostedZoneName: string;
+  landingDomainName: string;
+  landingAssetsBucketName: string;
+  landingDistributionId: string;
+  landingDistributionDomainName: string;
   frontendDomainName: string;
   apiDomainName: string;
   suiNetwork: string;
@@ -19,6 +23,9 @@ export function recordNameForZone(domainName: string, hostedZoneName: string): s
   const normalizedDomain = domainName.replace(/\.$/, "");
   const normalizedZone = hostedZoneName.replace(/\.$/, "");
   const suffix = `.${normalizedZone}`;
+  if (normalizedDomain === normalizedZone) {
+    return "";
+  }
   return normalizedDomain.endsWith(suffix)
     ? normalizedDomain.slice(0, -suffix.length)
     : normalizedDomain;
@@ -31,6 +38,10 @@ export function loadDeploymentConfig(app: App): DeploymentConfig {
   return {
     hostedZoneId: read("hostedZoneId", "Z091724633RFYDHQ5WNFL"),
     hostedZoneName: read("hostedZoneName", "nomadfinance.io"),
+    landingDomainName: read("landingDomainName", "nomadfinance.io"),
+    landingAssetsBucketName: read("landingAssetsBucketName", "nomadwebstack-assets9a31d427-nlv64ucstuo8"),
+    landingDistributionId: read("landingDistributionId", "E2L1EXRMK29M1Y"),
+    landingDistributionDomainName: read("landingDistributionDomainName", "d3mo6ecn37gtye.cloudfront.net"),
     frontendDomainName: read("frontendDomainName", "testnet.nomadfinance.io"),
     apiDomainName: read("apiDomainName", "testnet-api.nomadfinance.io"),
     suiNetwork: read("suiNetwork", "testnet"),

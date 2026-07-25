@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy backend and frontend
+    name: Deploy backend, frontend, and landing
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -38,6 +38,7 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
+            landing/package-lock.json
             infra/package-lock.json
 
       - name: Configure AWS credentials

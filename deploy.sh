@@ -133,6 +133,7 @@ echo "Using registry: $SUI_REGISTRY_OBJECT_ID"
 
 install_if_needed backend
 install_if_needed frontend
+install_if_needed landing
 install_if_needed infra
 
 echo "Building backend"
@@ -140,6 +141,9 @@ npm --prefix "$ROOT_DIR/backend" run build
 
 echo "Building frontend"
 npm --prefix "$ROOT_DIR/frontend" run build
+
+echo "Building landing"
+npm --prefix "$ROOT_DIR/landing" run build
 
 echo "Deploying AWS stacks"
 npm --prefix "$ROOT_DIR/infra" run deploy -- \

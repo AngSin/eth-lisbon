@@ -15,7 +15,7 @@ deployer-owned upgrade capability. The registry was initialized later with
 
 ## App Deployment
 
-Deploy the backend and frontend together with:
+Deploy the backend, testnet frontend, and landing page together with:
 
 ```bash
 bash ./deploy.sh
@@ -25,6 +25,9 @@ The script defaults to `AWS_PROFILE=unnatural-selection`, the latest published
 Sui package in `move/Published.toml`, Circle Sui Testnet USDC as principal, and
 Hashi Sui Testnet hBTC as collateral. If `SUI_REGISTRY_OBJECT_ID` is not present
 in `.env`, the script initializes the registry and stores the new object ID.
+
+The landing page is deployed to `https://nomadfinance.io` and links users to
+`https://testnet.nomadfinance.io`.
 
 Override any value by prefixing the command with env vars or passing CDK context:
 

@@ -24,5 +24,6 @@ export class DnsStack extends Stack {
       domainName: props.config.frontendDomainName,
       validation: acm.CertificateValidation.fromDns(this.hostedZone),
     });
+
   }
 }

@@ -5,6 +5,7 @@ import { ApiStack } from "../lib/api-stack.js";
 import { loadDeploymentConfig } from "../lib/config.js";
 import { DnsStack } from "../lib/dns-stack.js";
 import { FrontendStack } from "../lib/frontend-stack.js";
+import { LandingStack } from "../lib/landing-stack.js";
 
 const app = new App();
 const config = loadDeploymentConfig(app);
@@ -30,4 +31,9 @@ new FrontendStack(app, "NomadTestnetFrontendStack", {
   hostedZone: dnsStack.hostedZone,
   certificate: dnsStack.frontendCertificate,
   crossRegionReferences: true,
+});
+
+new LandingStack(app, "NomadLandingStack", {
+  env: { account, region },
+  config,
 });

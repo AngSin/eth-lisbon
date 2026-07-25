@@ -1,6 +1,6 @@
 # Infrastructure
 
-AWS CDK stacks for the testnet frontend, API, DynamoDB read model, DNS, and certificates.
+AWS CDK stacks for the landing page, testnet frontend, API, DynamoDB read model, DNS, and certificates.
 
 ## Prerequisites
 
@@ -9,6 +9,7 @@ Build the application artifacts before deploying:
 ```bash
 cd ../backend && npm install && npm run build
 cd ../frontend && npm install && npm run build
+cd ../landing && npm install && npm run build
 cd ../infra && npm install
 ```
 
