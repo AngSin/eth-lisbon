@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy backend and frontend
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      SUI_REGISTRY_OBJECT_ID: ${{ vars.SUI_REGISTRY_OBJECT_ID }}
+      SUI_PACKAGE_ID: ${{ vars.SUI_PACKAGE_ID }}
+      PRINCIPAL_COIN_TYPE: ${{ vars.PRINCIPAL_COIN_TYPE }}
+      COLLATERAL_COIN_TYPE: ${{ vars.COLLATERAL_COIN_TYPE }}
+      INODRA_WEBHOOK_SECRETS_SECRET_NAME: ${{ vars.INODRA_WEBHOOK_SECRETS_SECRET_NAME }}
+      INODRA_WEBHOOK_SECRETS_PARAMETER_NAME: ${{ vars.INODRA_WEBHOOK_SECRETS_PARAMETER_NAME }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            infra/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate deployment configuration
+        run: |
+          if [[ -z "$AWS_REGION" ]]; then
+            echo "Missing GitHub variable AWS_REGION"
+            exit 1
+          fi
+
+          if [[ -z "$SUI_REGISTRY_OBJECT_ID" ]]; then
+            echo "Missing GitHub variable SUI_REGISTRY_OBJECT_ID"
+            exit 1
+          fi
+
+      - name: Deploy
+        run: |
+          args=(-c "suiRegistryObjectId=$SUI_REGISTRY_OBJECT_ID")
+
+          if [[ -n "$SUI_PACKAGE_ID" ]]; then
+            args+=(-c "suiPackageId=$SUI_PACKAGE_ID")
+          fi
+
+          if [[ -n "$PRINCIPAL_COIN_TYPE" ]]; then
+            args+=(-c "principalCoinType=$PRINCIPAL_COIN_TYPE")
+          fi
+
+          if [[ -n "$COLLATERAL_COIN_TYPE" ]]; then
+            args+=(-c "collateralCoinType=$COLLATERAL_COIN_TYPE")
+          fi
+
+          if [[ -n "$INODRA_WEBHOOK_SECRETS_SECRET_NAME" ]]; then
+            args+=(-c "inodraWebhookSecretsSecretName=$INODRA_WEBHOOK_SECRETS_SECRET_NAME")
+          fi
+
+          if [[ -n "$INODRA_WEBHOOK_SECRETS_PARAMETER_NAME" ]]; then
+            args+=(-c "inodraWebhookSecretsParameterName=$INODRA_WEBHOOK_SECRETS_PARAMETER_NAME")
+          fi
+
+          bash ./deploy.sh "${args[@]}"

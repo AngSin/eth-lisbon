@@ -32,3 +32,29 @@ Override any value by prefixing the command with env vars or passing CDK context
 AWS_PROFILE=other-profile bash ./deploy.sh \
   -c inodraWebhookSecretsSecretName=<SECRET_NAME>
 ```
+
+## GitHub Actions Deployment
+
+The `Deploy` workflow deploys the backend and frontend on pushes to `main` and
+can also be run manually from GitHub Actions.
+
+Define these repository variables:
+
+- `AWS_REGION`: AWS region for the API stack, for example `us-east-1`.
+- `SUI_REGISTRY_OBJECT_ID`: `0x27acb76482da84ff4254260a188035f17acaa314042b56cae3fee28c1cb67440`.
+
+Define these repository secrets:
+
+- `AWS_ACCESS_KEY_ID`: AWS access key used by the deploy workflow.
+- `AWS_SECRET_ACCESS_KEY`: AWS secret access key used by the deploy workflow.
+
+Optional repository variables:
+
+- `SUI_PACKAGE_ID`: override the package in `move/Published.toml`.
+- `PRINCIPAL_COIN_TYPE`: override Circle Sui Testnet USDC.
+- `COLLATERAL_COIN_TYPE`: override Hashi Sui Testnet hBTC.
+- `INODRA_WEBHOOK_SECRETS_SECRET_NAME`: AWS Secrets Manager secret name for webhook secrets.
+- `INODRA_WEBHOOK_SECRETS_PARAMETER_NAME`: SSM Parameter Store name for webhook secrets.
+
+Store webhook secret values in AWS Secrets Manager or SSM, and give the AWS
+deploy user permission to read them.
