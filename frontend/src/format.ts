@@ -1,6 +1,6 @@
 export function parseUnits(input: string, decimals: number): bigint {
   const trimmed = input.trim();
-  if (!/^\d+(\.\d*)?$/.test(trimmed)) throw new Error("Enter a non-negative amount");
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(trimmed)) throw new Error("Enter a non-negative amount");
   const [whole, fraction = ""] = trimmed.split(".");
   if (fraction.length > decimals) throw new Error(`Use at most ${decimals} decimals`);
   return BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, "0") || "0");

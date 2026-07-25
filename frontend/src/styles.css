@@ -422,11 +422,13 @@ th {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  column-gap: 16px;
+  row-gap: 18px;
 }
 
 .field {
   display: grid;
+  align-self: start;
   gap: 6px;
 }
 
@@ -456,6 +458,10 @@ th {
 .field input:focus {
   outline: 2px solid color-mix(in srgb, var(--primary) 42%, transparent);
   outline-offset: 2px;
+}
+
+.form-panel .pill.wide {
+  margin-top: 22px;
 }
 
 .risk-panel,

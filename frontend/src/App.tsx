@@ -454,8 +454,8 @@ function LendView(props: {
           <TextField label="Duration days" value={form.durationDays} onChange={(durationDays) => setForm((prev) => ({ ...prev, durationDays }))} />
           <TextField label="Offer expiry days" value={form.expiresDays} onChange={(expiresDays) => setForm((prev) => ({ ...prev, expiresDays }))} />
           <TextField
-            label={`BTC/${PRINCIPAL_SYMBOL} reference`}
-            value={form.btcUsd}
+            label="BTC Price"
+            value={formatUsdPrice(form.btcUsd)}
             onChange={() => undefined}
             readOnly
             hint={props.marketUpdatedAt ? `LiveCoinWatch ${dateTime(Date.parse(props.marketUpdatedAt))}` : "Fallback until LiveCoinWatch is configured"}
@@ -468,6 +468,7 @@ function LendView(props: {
             fixedInterestAmount={fixedInterestAmount}
           />
         )}
+        {!risk && <WarningBlock risk="low" />}
         <button className="pill primary wide" disabled={!props.accountAddress} type="submit">
           Sign create offer
         </button>
@@ -704,4 +705,13 @@ function formatApr(input: string): string {
   const parsed = Number(input);
   if (!Number.isFinite(parsed)) return "n/a";
   return `${parsed.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}
+
+function formatUsdPrice(input: string): string {
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed)) return "$0";
+  return `$${parsed.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
