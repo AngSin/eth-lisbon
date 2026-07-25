@@ -9,7 +9,6 @@ import {
   RefreshCw,
   ShieldAlert,
   Sun,
-  Wallet,
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -97,6 +96,11 @@ function App() {
     }
   }
 
+  function changeView(nextView: View) {
+    setView(nextView);
+    if (nextView !== view) void refresh();
+  }
+
   useEffect(() => {
     void refresh();
   }, [account?.address]);
@@ -137,14 +141,14 @@ function App() {
   return (
     <main className="app-shell" data-theme={theme}>
       <header className="topbar">
-        <button className="brand" onClick={() => setView("borrow")}>
+        <button className="brand" onClick={() => changeView("borrow")}>
           <img className="brand-logo" src="/logo-mark.svg" alt="" />
           <span>Nomad Finance</span>
         </button>
         <nav className="nav-pills" aria-label="Primary">
-          <button className={view === "borrow" ? "active" : ""} onClick={() => setView("borrow")}>Borrow</button>
-          <button className={view === "lend" ? "active" : ""} onClick={() => setView("lend")}>Lend</button>
-          <button className={view === "detail" ? "active" : ""} onClick={() => setView("detail")}>Manage</button>
+          <button className={view === "borrow" ? "active" : ""} onClick={() => changeView("borrow")}>Borrow</button>
+          <button className={view === "lend" ? "active" : ""} onClick={() => changeView("lend")}>Lend</button>
+          <button className={view === "detail" ? "active" : ""} onClick={() => changeView("detail")}>Manage</button>
         </nav>
         <div className="topbar-actions">
           <button
@@ -184,23 +188,11 @@ function App() {
             <BorrowView
               offers={offers}
               loading={loading}
-              selectedOffer={selectedOffer}
-              onSelectOffer={setSelectedOffer}
-              onOpenLoan={(loan) => {
-                setSelectedLoan(loan);
-                setView("detail");
+              onOpenOffer={(offer) => {
+                setSelectedOffer(offer);
+                setSelectedLoan(null);
+                changeView("detail");
               }}
-              accountAddress={account?.address}
-              config={config}
-              onAccept={(offer) =>
-                execute(async () => {
-                  if (!account) throw new Error("Connect a wallet first");
-                  const balance = await getCoinBalance(suiClient, account.address, config.collateralCoinType);
-                  if (balance < BigInt(offer.collateralRequired)) throw new Error("Insufficient collateral balance");
-                  const tx = await buildAcceptOfferTx({ client: suiClient, account: account.address, config, offer });
-                  return await signAndExecute.mutateAsync({ transaction: tx });
-                })
-              }
             />
           )}
           {view === "lend" && (
@@ -214,11 +206,11 @@ function App() {
               onOpenOffer={(offer) => {
                 setSelectedOffer(offer);
                 setSelectedLoan(null);
-                setView("detail");
+                changeView("detail");
               }}
               onOpenLoan={(loan) => {
                 setSelectedLoan(loan);
-                setView("detail");
+                changeView("detail");
               }}
               onCreate={(form) =>
                 execute(async () => {
@@ -255,6 +247,15 @@ function App() {
               config={config}
               accountAddress={account?.address}
               onSelectLoan={setSelectedLoan}
+              onAccept={(offer) =>
+                execute(async () => {
+                  if (!account) throw new Error("Connect a wallet first");
+                  const balance = await getCoinBalance(suiClient, account.address, config.collateralCoinType);
+                  if (balance < BigInt(offer.collateralRequired)) throw new Error("Insufficient collateral balance");
+                  const tx = await buildAcceptOfferTx({ client: suiClient, account: account.address, config, offer });
+                  return await signAndExecute.mutateAsync({ transaction: tx });
+                })
+              }
               onCancel={(offer) =>
                 execute(async () => {
                   if (!account) throw new Error("Connect a wallet first");
@@ -285,15 +286,10 @@ function App() {
 function BorrowView(props: {
   offers: LoanOffer[];
   loading: boolean;
-  selectedOffer: LoanOffer | null;
-  onSelectOffer: (offer: LoanOffer) => void;
-  onOpenLoan: (loan: Loan) => void;
-  accountAddress?: string;
-  config: AppConfig;
-  onAccept: (offer: LoanOffer) => void;
+  onOpenOffer: (offer: LoanOffer) => void;
 }) {
   return (
-    <section className="workbench two-column">
+    <section className="workbench">
       <div className="panel main-panel">
         <SectionHeader icon={<Banknote size={20} />} title="Borrow" count={props.offers.length} />
         <div className="table-wrap">
@@ -306,7 +302,6 @@ function BorrowView(props: {
                 <th>Interest</th>
                 <th>Total due</th>
                 <th>Duration</th>
-                <th>Maturity</th>
                 <th>Lender</th>
                 <th>Risk</th>
                 <th></th>
@@ -321,11 +316,10 @@ function BorrowView(props: {
                   <td>{formatUnits(offer.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatUnits(offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</td>
                   <td>{formatDuration(offer.durationMs)}</td>
-                  <td>{dateTime(Date.now() + offer.durationMs)}</td>
                   <td>{shortAddress(offer.lender)}</td>
                   <td><RiskBadge risk={offer.riskLevel ?? "medium"} /></td>
                   <td>
-                    <button className="pill small" onClick={() => props.onSelectOffer(offer)}>
+                    <button className="pill small" onClick={() => props.onOpenOffer(offer)}>
                       Preview <ArrowRight size={15} />
                     </button>
                   </td>
@@ -333,55 +327,14 @@ function BorrowView(props: {
               ))}
               {!props.loading && props.offers.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="table-empty">No open offers indexed</td>
+                  <td colSpan={9} className="table-empty">No open offers indexed</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
-      <OfferPreview offer={props.selectedOffer} config={props.config} accountAddress={props.accountAddress} onAccept={props.onAccept} />
     </section>
-  );
-}
-
-function OfferPreview(props: {
-  offer: LoanOffer | null;
-  config: AppConfig;
-  accountAddress?: string;
-  onAccept: (offer: LoanOffer) => void;
-}) {
-  const [balance, setBalance] = useState<bigint | null>(null);
-  const client = useSuiClient();
-  useEffect(() => {
-    if (!props.accountAddress || !props.config.collateralCoinType || !props.offer) {
-      setBalance(null);
-      return;
-    }
-    void getCoinBalance(client, props.accountAddress, props.config.collateralCoinType).then(setBalance).catch(() => setBalance(null));
-  }, [client, props.accountAddress, props.config.collateralCoinType, props.offer?.offerId]);
-
-  if (!props.offer) {
-    return <aside className="panel side-panel empty-state">Select an offer</aside>;
-  }
-  const hasBalance = balance !== null && balance >= BigInt(props.offer.collateralRequired);
-  return (
-    <aside className="panel side-panel">
-      <SectionHeader icon={<Wallet size={20} />} title="Accept preview" />
-      <DetailGrid
-        rows={[
-          ["Principal", formatUnits(props.offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
-          ["Collateral", formatUnits(props.offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
-          ["Total due", formatUnits(props.offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
-          ["Maturity", dateTime(Date.now() + props.offer.durationMs)],
-          ["Collateral balance", balance === null ? "n/a" : formatUnits(balance, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
-        ]}
-      />
-      <WarningBlock risk={props.offer.riskLevel ?? "medium"} />
-      <button className="pill primary wide" disabled={!props.accountAddress || !hasBalance} onClick={() => props.onAccept(props.offer!)}>
-        Sign accept
-      </button>
-    </aside>
   );
 }
 
@@ -452,6 +405,18 @@ function LendView(props: {
   }), [riskPreview.error]);
   const lenderOffers = props.offers.filter((offer) => offer.lender === props.accountAddress);
   const lenderLoans = props.loans.filter((loan) => loan.lender === props.accountAddress);
+  const canCreateOffer = useMemo(() => {
+    try {
+      parseUnits(form.principal, PRINCIPAL_DECIMALS);
+      parseUnits(form.collateral, COLLATERAL_DECIMALS);
+      parsePercentBps(form.aprPercent);
+      if (!/^\d+$/.test(form.durationDays) || BigInt(form.durationDays) <= 0n) return false;
+      if (!/^\d+$/.test(form.expiresDays) || BigInt(form.expiresDays) <= 0n) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }, [form.aprPercent, form.collateral, form.durationDays, form.expiresDays, form.principal]);
 
   return (
     <section className="workbench two-column">
@@ -459,16 +424,42 @@ function LendView(props: {
         className="panel form-panel"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!canCreateOffer) return;
           props.onCreate(form);
         }}
       >
         <SectionHeader icon={<Banknote size={20} />} title="Lend" />
         <div className="form-grid">
-          <TextField label={`Principal amount (${PRINCIPAL_SYMBOL})`} value={form.principal} onChange={(principal) => setForm((prev) => ({ ...prev, principal }))} />
-          <TextField label={`Collateral amount (${COLLATERAL_SYMBOL})`} value={form.collateral} onChange={(collateral) => setForm((prev) => ({ ...prev, collateral }))} />
-          <TextField label="Annualized interest (APR %)" value={form.aprPercent} onChange={(aprPercent) => setForm((prev) => ({ ...prev, aprPercent }))} />
-          <TextField label="Duration days" value={form.durationDays} onChange={(durationDays) => setForm((prev) => ({ ...prev, durationDays }))} />
-          <TextField label="Offer expiry days" value={form.expiresDays} onChange={(expiresDays) => setForm((prev) => ({ ...prev, expiresDays }))} />
+          <TextField
+            label={`Principal amount (${PRINCIPAL_SYMBOL})`}
+            value={form.principal}
+            maxDecimals={PRINCIPAL_DECIMALS}
+            onChange={(principal) => setForm((prev) => ({ ...prev, principal }))}
+          />
+          <TextField
+            label={`Collateral amount (${COLLATERAL_SYMBOL})`}
+            value={form.collateral}
+            maxDecimals={COLLATERAL_DECIMALS}
+            onChange={(collateral) => setForm((prev) => ({ ...prev, collateral }))}
+          />
+          <TextField
+            label="Annualized interest (APR %)"
+            value={form.aprPercent}
+            maxDecimals={2}
+            onChange={(aprPercent) => setForm((prev) => ({ ...prev, aprPercent }))}
+          />
+          <TextField
+            label="Duration days"
+            value={form.durationDays}
+            maxDecimals={0}
+            onChange={(durationDays) => setForm((prev) => ({ ...prev, durationDays }))}
+          />
+          <TextField
+            label="Offer expiry days"
+            value={form.expiresDays}
+            maxDecimals={0}
+            onChange={(expiresDays) => setForm((prev) => ({ ...prev, expiresDays }))}
+          />
           <TextField
             label="BTC Price"
             value={formatUsdPrice(form.btcUsd)}
@@ -492,8 +483,8 @@ function LendView(props: {
             previewError={riskPreview.error ?? "Risk preview unavailable"}
           />
         )}
-        <button className="pill primary wide" disabled={!props.accountAddress} type="submit">
-          Sign create offer
+        <button className="pill primary wide" disabled={!props.accountAddress || !canCreateOffer} type="submit">
+          Create offer
         </button>
       </form>
       <div className="panel side-panel">
@@ -514,15 +505,32 @@ function DetailView(props: {
   config: AppConfig;
   accountAddress?: string;
   onSelectLoan: (loan: Loan) => void;
+  onAccept: (offer: LoanOffer) => void;
   onCancel: (offer: LoanOffer) => void;
   onRepay: (loan: Loan) => void;
   onClaim: (loan: Loan) => void;
 }) {
-  const loan = props.loan ?? props.loans[0] ?? null;
+  const loan = props.offer ? props.loan : props.loan ?? props.loans[0] ?? null;
+  const offer = loan ? null : props.offer;
+  const [collateralBalance, setCollateralBalance] = useState<bigint | null>(null);
+  const client = useSuiClient();
+
+  useEffect(() => {
+    if (!props.accountAddress || !props.config.collateralCoinType || !offer) {
+      setCollateralBalance(null);
+      return;
+    }
+    void getCoinBalance(client, props.accountAddress, props.config.collateralCoinType)
+      .then(setCollateralBalance)
+      .catch(() => setCollateralBalance(null));
+  }, [client, props.accountAddress, props.config.collateralCoinType, offer?.offerId]);
+
+  const hasCollateralBalance = offer !== null && collateralBalance !== null && collateralBalance >= BigInt(offer.collateralRequired);
+
   return (
     <section className="workbench two-column">
       <div className="panel main-panel">
-        <SectionHeader icon={<ShieldAlert size={20} />} title="Loan detail" />
+        <SectionHeader icon={<ShieldAlert size={20} />} title={offer ? "Offer detail" : "Loan detail"} />
         {loan ? (
           <>
             <DetailGrid
@@ -543,7 +551,7 @@ function DetailView(props: {
                 disabled={props.accountAddress !== loan.borrower || loan.status !== "active"}
                 onClick={() => props.onRepay(loan)}
               >
-                Sign repay
+                Repay
               </button>
               <button
                 className="pill"
@@ -554,24 +562,40 @@ function DetailView(props: {
               </button>
             </div>
           </>
-        ) : props.offer ? (
+        ) : offer ? (
           <>
             <DetailGrid
               rows={[
-                ["Offer", props.offer.offerId],
-                ["Lender", shortAddress(props.offer.lender)],
-                ["Principal", formatUnits(props.offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
-                ["Collateral", formatUnits(props.offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
-                ["Status", props.offer.status],
+                ["Offer", offer.offerId],
+                ["Lender", shortAddress(offer.lender)],
+                ["Principal", formatUnits(offer.principalAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+                ["Collateral", formatUnits(offer.collateralRequired, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
+                ["LTV", formatBps(offer.startingLtvBps)],
+                ["Interest", formatUnits(offer.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+                ["Total due", formatUnits(offer.totalDueAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)],
+                ["Duration", formatDuration(offer.durationMs)],
+                ["Maturity", dateTime(Date.now() + offer.durationMs)],
+                ["Collateral balance", collateralBalance === null ? "n/a" : formatUnits(collateralBalance, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL)],
+                ["Status", offer.status],
               ]}
             />
-            <button
-              className="pill"
-              disabled={props.accountAddress !== props.offer.lender || props.offer.status !== "open"}
-              onClick={() => props.onCancel(props.offer!)}
-            >
-              Cancel offer
-            </button>
+            <WarningBlock risk={offer.riskLevel ?? "medium"} />
+            <div className="action-row">
+              <button
+                className="pill primary"
+                disabled={!props.accountAddress || !hasCollateralBalance || offer.status !== "open"}
+                onClick={() => props.onAccept(offer)}
+              >
+                Accept
+              </button>
+              <button
+                className="pill"
+                disabled={props.accountAddress !== offer.lender || offer.status !== "open"}
+                onClick={() => props.onCancel(offer)}
+              >
+                Cancel offer
+              </button>
+            </div>
           </>
         ) : (
           <div className="empty-state">No loan selected</div>
@@ -637,9 +661,15 @@ function TextField(props: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  maxDecimals?: number;
   readOnly?: boolean;
   hint?: string;
 }) {
+  function handleChange(value: string) {
+    if (props.maxDecimals !== undefined && !decimalInputWithinLimit(value, props.maxDecimals)) return;
+    props.onChange(value);
+  }
+
   return (
     <label className="field">
       <span>{props.label}</span>
@@ -648,7 +678,7 @@ function TextField(props: {
         value={props.value}
         readOnly={props.readOnly}
         aria-readonly={props.readOnly}
-        onChange={(event) => props.onChange(event.target.value)}
+        onChange={(event) => handleChange(event.target.value)}
       />
       {props.hint && <small>{props.hint}</small>}
     </label>
@@ -739,4 +769,11 @@ function formatUsdPrice(input: string): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function decimalInputWithinLimit(input: string, maxDecimals: number): boolean {
+  if (input === "") return true;
+  if (maxDecimals === 0) return /^\d*$/.test(input);
+  const match = input.match(/^(\d+)?(\.(\d*)?)?$/);
+  return match !== null && (match[3]?.length ?? 0) <= maxDecimals;
 }

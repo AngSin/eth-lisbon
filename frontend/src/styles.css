@@ -354,12 +354,12 @@ button:disabled {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 table {
   width: 100%;
-  min-width: 1040px;
+  min-width: 0;
   border-collapse: collapse;
 }
 
@@ -371,7 +371,7 @@ td {
   font-family: var(--font-technical);
   font-size: 13px;
   line-height: 18px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 th {

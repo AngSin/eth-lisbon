@@ -13,7 +13,7 @@ export function formatUnits(value: string | bigint, decimals: number, symbol: st
   const fraction = amount % scale;
   if (fraction === 0n) return `${whole.toString()} ${symbol}`;
   const fractionText = fraction.toString().padStart(decimals, "0").replace(/0+$/, "");
-  return `${whole.toString()}.${fractionText.slice(0, 4)} ${symbol}`;
+  return `${whole.toString()}.${fractionText} ${symbol}`;
 }
 
 export function formatBps(value?: number): string {

@@ -1,5 +1,5 @@
 import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { Transaction } from "@mysten/sui/transactions";
+import { coinWithBalance, Transaction } from "@mysten/sui/transactions";
 import { CLOCK_OBJECT_ID } from "./config";
 import type { AppConfig, Loan, LoanOffer } from "./types";
 
@@ -14,14 +14,13 @@ export async function buildCreateOfferTx(input: {
   expiresAtMs: number;
 }): Promise<Transaction> {
   ensureConfigured(input.config);
-  const coinId = await findCoin(input.client, input.account, input.config.principalCoinType, input.principalAmount);
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::create_offer`,
     typeArguments: [input.config.principalCoinType, input.config.collateralCoinType],
     arguments: [
       tx.object(input.config.suiRegistryObjectId),
-      tx.object(coinId),
+      coinWithBalance({ type: input.config.principalCoinType, balance: input.principalAmount }),
       tx.pure.u64(input.principalAmount),
       tx.pure.u64(input.fixedInterestAmount),
       tx.pure.u64(input.collateralRequired),
@@ -40,12 +39,6 @@ export async function buildAcceptOfferTx(input: {
   offer: LoanOffer;
 }): Promise<Transaction> {
   ensureConfigured(input.config);
-  const coinId = await findCoin(
-    input.client,
-    input.account,
-    input.config.collateralCoinType,
-    BigInt(input.offer.collateralRequired),
-  );
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::accept_offer`,
@@ -53,7 +46,7 @@ export async function buildAcceptOfferTx(input: {
     arguments: [
       tx.object(input.config.suiRegistryObjectId),
       tx.object(input.offer.offerObjectId),
-      tx.object(coinId),
+      coinWithBalance({ type: input.config.collateralCoinType, balance: BigInt(input.offer.collateralRequired) }),
       tx.object(CLOCK_OBJECT_ID),
     ],
   });
@@ -78,12 +71,15 @@ export async function buildRepayTx(input: {
   loan: Loan;
 }): Promise<Transaction> {
   ensureConfigured(input.config);
-  const coinId = await findCoin(input.client, input.account, input.config.principalCoinType, BigInt(input.loan.totalDueAmount));
   const tx = new Transaction();
   tx.moveCall({
     target: `${input.config.suiPackageId}::protocol::repay`,
     typeArguments: [input.config.principalCoinType, input.config.collateralCoinType],
-    arguments: [tx.object(input.loan.loanObjectId), tx.object(coinId), tx.object(CLOCK_OBJECT_ID)],
+    arguments: [
+      tx.object(input.loan.loanObjectId),
+      coinWithBalance({ type: input.config.principalCoinType, balance: BigInt(input.loan.totalDueAmount) }),
+      tx.object(CLOCK_OBJECT_ID),
+    ],
   });
   return tx;
 }
@@ -103,22 +99,6 @@ export async function getCoinBalance(client: SuiJsonRpcClient, owner: string, co
   if (!coinType) return 0n;
   const balance = await client.getBalance({ owner, coinType });
   return BigInt(balance.totalBalance);
-}
-
-async function findCoin(
-  client: SuiJsonRpcClient,
-  owner: string,
-  coinType: string,
-  amount: bigint,
-): Promise<string> {
-  let cursor: string | null | undefined;
-  do {
-    const page = await client.getCoins({ owner, coinType, cursor });
-    const coin = page.data.find((item) => BigInt(item.balance) >= amount);
-    if (coin) return coin.coinObjectId;
-    cursor = page.nextCursor;
-  } while (cursor);
-  throw new Error("No single coin has enough balance for this transaction");
 }
 
 function ensureConfigured(config: AppConfig): void {
