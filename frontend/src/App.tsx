@@ -421,19 +421,35 @@ function LendView(props: {
       return 0n;
     }
   }, [form.aprPercent, durationMs, principalAmount]);
-  const risk = useMemo(() => {
+  const riskPreview = useMemo(() => {
     try {
-      return localRiskScore({
-        principalAmount,
-        fixedInterestAmount,
-        collateralAmount: parseUnits(form.collateral, COLLATERAL_DECIMALS),
-        durationMs,
-        btcUsdPrice: parseUnits(form.btcUsd, PRINCIPAL_DECIMALS),
-      });
-    } catch {
-      return null;
+      return {
+        score: localRiskScore({
+          principalAmount,
+          fixedInterestAmount,
+          collateralAmount: parseUnits(form.collateral, COLLATERAL_DECIMALS),
+          durationMs,
+          btcUsdPrice: parseUnits(form.btcUsd, PRINCIPAL_DECIMALS),
+        }),
+        error: null,
+      };
+    } catch (error) {
+      return {
+        score: null,
+        error: error instanceof Error ? error.message : "Risk preview unavailable",
+      };
     }
-  }, [form]);
+  }, [durationMs, fixedInterestAmount, form.btcUsd, form.collateral, principalAmount]);
+  const risk = riskPreview.score;
+  const fallbackRisk = useMemo<RiskScore>(() => ({
+    startingLtvBps: 0,
+    collateralBufferBps: 0,
+    breakEvenDrawdownBps: 0,
+    durationBucket: "short",
+    interestBps: 0,
+    riskLevel: "critical",
+    warning: riskPreview.error ?? "Risk preview unavailable",
+  }), [riskPreview.error]);
   const lenderOffers = props.offers.filter((offer) => offer.lender === props.accountAddress);
   const lenderLoans = props.loans.filter((loan) => loan.lender === props.accountAddress);
 
@@ -468,7 +484,14 @@ function LendView(props: {
             fixedInterestAmount={fixedInterestAmount}
           />
         )}
-        {!risk && <WarningBlock risk="low" />}
+        {!risk && (
+          <RiskPanel
+            score={fallbackRisk}
+            aprPercent={form.aprPercent}
+            fixedInterestAmount={fixedInterestAmount}
+            previewError={riskPreview.error ?? "Risk preview unavailable"}
+          />
+        )}
         <button className="pill primary wide" disabled={!props.accountAddress} type="submit">
           Sign create offer
         </button>
@@ -636,6 +659,7 @@ function RiskPanel(props: {
   score: RiskScore;
   aprPercent: string;
   fixedInterestAmount: bigint;
+  previewError?: string;
 }) {
   return (
     <div className="risk-panel">
@@ -643,9 +667,10 @@ function RiskPanel(props: {
         <RiskBadge risk={props.score.riskLevel} />
         <span>APR {formatApr(props.aprPercent)}</span>
         <span>Fixed {formatUnits(props.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</span>
-        <span>LTV {formatBps(props.score.startingLtvBps)}</span>
-        <span>Buffer {formatBps(props.score.collateralBufferBps)}</span>
+        <span>LTV {props.previewError ? "n/a" : formatBps(props.score.startingLtvBps)}</span>
+        <span>Buffer {props.previewError ? "n/a" : formatBps(props.score.collateralBufferBps)}</span>
       </div>
+      {props.previewError && <p className="risk-error">{props.previewError}</p>}
       <WarningBlock risk={props.score.riskLevel} />
     </div>
   );
