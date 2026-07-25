@@ -18,7 +18,7 @@ test("GET /config returns public Sui configuration", async () => {
   assert.deepEqual(JSON.parse(response.body ?? "{}"), {
     apiVersion: "2026-07-25",
     suiNetwork: "testnet",
-    suiRpcUrl: "https://fullnode.testnet.sui.io:443",
+    suiRpcUrl: "https://sui-testnet-rpc.publicnode.com",
     suiPackageId: "0xpackage",
     suiRegistryObjectId: "0xregistry",
     collateralCoinType: "0xcollateral::coin::COLLATERAL",

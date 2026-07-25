@@ -11,7 +11,9 @@
 
 The initial publish transaction only created the immutable package and the
 deployer-owned upgrade capability. The registry was initialized later with
-`nomad_loans::protocol::init_registry<USDC, hBTC>`.
+`nomad_loans::protocol::init_registry<USDC, hBTC>`. Configure Inodra webhooks
+with the original package ID because emitted event types remain under that
+package after upgrades.
 
 ## App Deployment
 

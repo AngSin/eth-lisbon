@@ -71,6 +71,47 @@ test("ingests OfferCreated once and returns duplicate on replay", async () => {
   assert.equal(repository.receipts.get("event-1")?.processingStatus, "processed");
 });
 
+test("accepts events emitted under the original package id after an upgrade", async () => {
+  const repository = new InMemoryRepository();
+  const currentPackageId = "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74";
+  const body = JSON.stringify({
+    payloadVersion: 1,
+    id: "event-original-package",
+    activityType: "package_event",
+    type: `${packageId}::protocol::OfferCreated`,
+    transactionDigest: "tx-original",
+    eventSequence: "0",
+    checkpoint: "10",
+    parsedJson: {
+      offer_id: "0",
+      offer_object_id: "0xoffer",
+      lender: "0xlender",
+      principal_amount: "1000",
+      fixed_interest_amount: "100",
+      total_due_amount: "1100",
+      collateral_required: "50",
+      duration_ms: "1000",
+      expires_at_ms: "2000",
+      created_at_ms: "100",
+    },
+  });
+
+  const response = await handleInodraWebhook(
+    webhookEvent(body, sign(body)),
+    loadConfig({
+      SUI_PACKAGE_ID: currentPackageId,
+      SUI_EVENT_PACKAGE_ID: packageId,
+      INODRA_WEBHOOK_SECRET: secret,
+    }),
+    repository,
+    { default: secret },
+    now,
+  );
+
+  assert.equal(response.statusCode, 202);
+  assert.equal(repository.offers.get("0")?.transactionDigest, "tx-original");
+});
+
 test("LoanCreated accepts offer and creates active loan", async () => {
   const repository = new InMemoryRepository();
   await repository.upsertOffer({

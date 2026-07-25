@@ -12,6 +12,7 @@ export interface DeploymentConfig {
   suiNetwork: string;
   suiRpcUrl: string;
   suiPackageId: string;
+  suiEventPackageId?: string;
   suiRegistryObjectId: string;
   collateralCoinType: string;
   principalCoinType: string;
@@ -46,11 +47,12 @@ export function loadDeploymentConfig(app: App): DeploymentConfig {
     frontendDomainName: read("frontendDomainName", "testnet.nomadfinance.io"),
     apiDomainName: read("apiDomainName", "testnet-api.nomadfinance.io"),
     suiNetwork: read("suiNetwork", "testnet"),
-    suiRpcUrl: read("suiRpcUrl", "https://fullnode.testnet.sui.io:443"),
+    suiRpcUrl: read("suiRpcUrl", "https://sui-testnet-rpc.publicnode.com"),
     suiPackageId: read(
       "suiPackageId",
       "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74",
     ),
+    suiEventPackageId: optional(read("suiEventPackageId", process.env.SUI_EVENT_PACKAGE_ID ?? "")),
     suiRegistryObjectId: read("suiRegistryObjectId"),
     collateralCoinType: read("collateralCoinType", read("hbtcCoinType")),
     principalCoinType: read("principalCoinType", read("dusdcCoinType")),

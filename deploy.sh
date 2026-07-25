@@ -11,6 +11,7 @@ ENV_FILE="$ROOT_DIR/.env"
 DEFAULT_PRINCIPAL_COIN_TYPE="0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
 DEFAULT_COLLATERAL_COIN_TYPE="0xfcea10cadbb553c4874201584abf68771592678952efd957b2e82c010c7f4360::btc::BTC"
 DEFAULT_SUI_PACKAGE_ID="$(awk -F ' = ' '/^published-at = / { gsub(/"/, "", $2); print $2; exit }' "$ROOT_DIR/move/Published.toml")"
+DEFAULT_SUI_EVENT_PACKAGE_ID="$(awk -F ' = ' '/^original-id = / { gsub(/"/, "", $2); print $2; exit }' "$ROOT_DIR/move/Published.toml")"
 SUI_GAS_BUDGET="${SUI_GAS_BUDGET:-100000000}"
 
 install_if_needed() {
@@ -101,12 +102,15 @@ init_registry_if_needed() {
 load_env_file
 
 ENV_SUI_PACKAGE_ID="${SUI_PACKAGE_ID:-}"
+ENV_SUI_EVENT_PACKAGE_ID="${SUI_EVENT_PACKAGE_ID:-}"
 ENV_SUI_REGISTRY_OBJECT_ID="${SUI_REGISTRY_OBJECT_ID:-}"
 ENV_PRINCIPAL_COIN_TYPE="${PRINCIPAL_COIN_TYPE:-}"
 ENV_COLLATERAL_COIN_TYPE="${COLLATERAL_COIN_TYPE:-}"
 
 SUI_PACKAGE_ID="$(context_value suiPackageId "$@" || true)"
 SUI_PACKAGE_ID="${SUI_PACKAGE_ID:-${ENV_SUI_PACKAGE_ID:-$DEFAULT_SUI_PACKAGE_ID}}"
+SUI_EVENT_PACKAGE_ID="$(context_value suiEventPackageId "$@" || true)"
+SUI_EVENT_PACKAGE_ID="${SUI_EVENT_PACKAGE_ID:-${ENV_SUI_EVENT_PACKAGE_ID:-$DEFAULT_SUI_EVENT_PACKAGE_ID}}"
 SUI_REGISTRY_OBJECT_ID="$(context_value suiRegistryObjectId "$@" || true)"
 SUI_REGISTRY_OBJECT_ID="${SUI_REGISTRY_OBJECT_ID:-$ENV_SUI_REGISTRY_OBJECT_ID}"
 PRINCIPAL_COIN_TYPE="$(context_value principalCoinType "$@" || true)"
@@ -120,6 +124,7 @@ else
   echo "Using AWS credentials from environment"
 fi
 echo "Using Sui package: $SUI_PACKAGE_ID"
+echo "Using Sui event package: $SUI_EVENT_PACKAGE_ID"
 echo "Using principal coin: $PRINCIPAL_COIN_TYPE"
 echo "Using collateral coin: $COLLATERAL_COIN_TYPE"
 
@@ -148,6 +153,7 @@ npm --prefix "$ROOT_DIR/landing" run build
 echo "Deploying AWS stacks"
 npm --prefix "$ROOT_DIR/infra" run deploy -- \
   -c "suiPackageId=$SUI_PACKAGE_ID" \
+  -c "suiEventPackageId=$SUI_EVENT_PACKAGE_ID" \
   -c "suiRegistryObjectId=$SUI_REGISTRY_OBJECT_ID" \
   -c "principalCoinType=$PRINCIPAL_COIN_TYPE" \
   -c "collateralCoinType=$COLLATERAL_COIN_TYPE" \

@@ -17,14 +17,21 @@ export interface InodraPayload {
 }
 
 export function allowedEventTypes(config: AppConfig): Set<string> {
-  const prefix = `${config.suiPackageId}::protocol::`;
-  return new Set([
-    `${prefix}OfferCreated`,
-    `${prefix}OfferCancelled`,
-    `${prefix}LoanCreated`,
-    `${prefix}LoanRepaid`,
-    `${prefix}CollateralClaimed`,
-  ]);
+  const packageIds = new Set([config.suiPackageId]);
+  if (config.suiEventPackageId) packageIds.add(config.suiEventPackageId);
+
+  return new Set(
+    [...packageIds].flatMap((packageId) => {
+      const prefix = `${packageId}::protocol::`;
+      return [
+        `${prefix}OfferCreated`,
+        `${prefix}OfferCancelled`,
+        `${prefix}LoanCreated`,
+        `${prefix}LoanRepaid`,
+        `${prefix}CollateralClaimed`,
+      ];
+    }),
+  );
 }
 
 export function validateInodraPayload(

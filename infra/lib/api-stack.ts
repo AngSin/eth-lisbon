@@ -75,6 +75,9 @@ export class ApiStack extends Stack {
       SUI_NETWORK: props.config.suiNetwork,
       SUI_RPC_URL: props.config.suiRpcUrl,
       SUI_PACKAGE_ID: props.config.suiPackageId,
+      ...(props.config.suiEventPackageId
+        ? { SUI_EVENT_PACKAGE_ID: props.config.suiEventPackageId }
+        : {}),
       SUI_REGISTRY_OBJECT_ID: props.config.suiRegistryObjectId,
       COLLATERAL_COIN_TYPE: props.config.collateralCoinType,
       PRINCIPAL_COIN_TYPE: props.config.principalCoinType,

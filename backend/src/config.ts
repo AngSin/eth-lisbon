@@ -3,6 +3,7 @@ export interface AppConfig {
   suiNetwork: string;
   suiRpcUrl: string;
   suiPackageId: string;
+  suiEventPackageId?: string;
   suiRegistryObjectId: string;
   collateralCoinType: string;
   principalCoinType: string;
@@ -21,10 +22,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     apiVersion: env.API_VERSION ?? "2026-07-25",
     suiNetwork: env.SUI_NETWORK ?? "testnet",
-    suiRpcUrl: env.SUI_RPC_URL ?? "https://fullnode.testnet.sui.io:443",
+    suiRpcUrl: env.SUI_RPC_URL ?? "https://sui-testnet-rpc.publicnode.com",
     suiPackageId:
       env.SUI_PACKAGE_ID ??
       "0xd236e287e752dd9f1d05f9bd06c3bf44ef0c31d701d0a4b55b6ff2b9d7852c74",
+    suiEventPackageId: env.SUI_EVENT_PACKAGE_ID,
     suiRegistryObjectId: env.SUI_REGISTRY_OBJECT_ID ?? "",
     collateralCoinType:
       env.COLLATERAL_COIN_TYPE ?? env.HBTC_COIN_TYPE ?? "",
