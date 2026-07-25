@@ -62,7 +62,7 @@ function initialTheme(): Theme {
   if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem("nomad-theme");
   if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "light";
 }
 
 function App() {
@@ -127,7 +127,7 @@ function App() {
         <nav className="nav-pills" aria-label="Primary">
           <button className={view === "borrow" ? "active" : ""} onClick={() => setView("borrow")}>Borrow</button>
           <button className={view === "lend" ? "active" : ""} onClick={() => setView("lend")}>Lend</button>
-          <button className={view === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detail</button>
+          <button className={view === "detail" ? "active" : ""} onClick={() => setView("detail")}>Manage</button>
         </nav>
         <div className="topbar-actions">
           <button

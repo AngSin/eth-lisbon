@@ -3,6 +3,33 @@ version: alpha
 name: Uber-design-analysis
 description: An inspired interpretation of Uber's design language — a transportation-and-delivery super-app brand whose web surface is a black-and-white duet, framed by a custom geometric display sans, accented by a single signature pill shape (radius 999px) on every interactive element, and decorated only by editorial 4:3 illustrations of riders, drivers, and city objects.
 
+nomad-finance-brand:
+  fonts:
+    headlines: DM Serif Display
+    boxes-diagrams-technical-text: Space Grotesk
+    subtitles-ui-supporting-text: Plus Jakarta Sans
+  main-colors:
+    purple: "#9945FF"
+    green: "#14F195"
+    primary-text: "#0F172A"
+    muted-text: "#475569"
+  background:
+    base: "linear-gradient(135deg, #ffffff, #f8fafc)"
+    layered-glow-gradients:
+      purple: "rgba(153,69,255,0.62)"
+      green: "rgba(20,241,149,0.56)"
+  card-styling:
+    surface: semi-transparent white/slate cards
+    borders: soft borders
+    shadows: large blurred shadows
+    internal-gradients: subtle internal gradients
+    rounded-corners: 28px
+  action-buttons:
+    background: "linear-gradient(120deg, #8B5CF6 0%, #6366F1 45%, #14F195 100%)"
+    text: "#FFFFFF"
+    shape: pill
+    shadow: layered purple and green glow shadows
+
 colors:
   primary: "#000000"
   on-primary: "#ffffff"
