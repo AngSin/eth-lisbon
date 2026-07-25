@@ -1,9 +1,8 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { loadConfig, type AppConfig } from "../config.js";
 import { DynamoRepository } from "../db.js";
-import { json, parseJsonBody } from "../http.js";
+import { json } from "../http.js";
 import { fetchBtcUsdcPrice } from "../market.js";
-import { computeRiskScore, type RiskScoreInput } from "../risk.js";
 import type { OfferStatus, Repository, RiskLevel } from "../types.js";
 
 export async function handler(
@@ -64,11 +63,6 @@ export async function handleApi(
     if (method === "GET" && path.startsWith("/accounts/") && path.endsWith("/loans")) {
       const address = decodeURIComponent(path.slice("/accounts/".length, -"/loans".length));
       return json(200, { loans: await repository.listAccountLoans(address) });
-    }
-    if (method === "POST" && path === "/risk-score") {
-      const body = parseJsonBody<RiskScoreInput>(event.body);
-      if (!body) return json(400, { error: "invalid JSON body" });
-      return json(200, computeRiskScore(body));
     }
     return json(404, { error: "not found" });
   } catch (error) {
