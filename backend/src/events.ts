@@ -3,10 +3,12 @@ import type { LoanItem, LoanOfferItem, Repository } from "./types.js";
 
 export interface InodraPayload {
   payloadVersion: number;
+  payload?: Omit<InodraPayload, "payload" | "payloadVersion">;
   id?: string;
   activityType: string;
   type: string;
   transactionDigest?: string;
+  txDigest?: string;
   digest?: string;
   eventSequence?: string | number;
   eventSeq?: string | number;
@@ -14,6 +16,16 @@ export interface InodraPayload {
   parsedJson?: Record<string, unknown>;
   data?: Record<string, unknown>;
   event?: { parsedJson?: Record<string, unknown> };
+}
+
+export function normalizeInodraPayload(payload: InodraPayload): InodraPayload {
+  if (payload.payload && typeof payload.payload === "object") {
+    return {
+      ...payload.payload,
+      payloadVersion: payload.payloadVersion,
+    } as InodraPayload;
+  }
+  return payload;
 }
 
 export function allowedEventTypes(config: AppConfig): Set<string> {
@@ -55,7 +67,7 @@ export async function processProtocolEvent(
 ): Promise<void> {
   const eventName = payload.type.split("::").at(-1);
   const fields = eventFields(payload);
-  const transactionDigest = payload.transactionDigest ?? payload.digest;
+  const transactionDigest = payload.transactionDigest ?? payload.txDigest ?? payload.digest;
 
   switch (eventName) {
     case "OfferCreated":

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import type { AppConfig } from "./config.js";
 import { json, lowerCaseHeaders } from "./http.js";
-import { processProtocolEvent, validateInodraPayload, type InodraPayload } from "./events.js";
+import { normalizeInodraPayload, processProtocolEvent, validateInodraPayload, type InodraPayload } from "./events.js";
 import type { Repository } from "./types.js";
 import type { WebhookSecrets } from "./secrets.js";
 
@@ -36,7 +36,7 @@ export async function handleInodraWebhook(
 
   let payload: InodraPayload;
   try {
-    payload = JSON.parse(body) as InodraPayload;
+    payload = normalizeInodraPayload(JSON.parse(body) as InodraPayload);
   } catch {
     return json(400, { error: "invalid JSON body" });
   }
@@ -51,7 +51,7 @@ export async function handleInodraWebhook(
   const receiptStatus = await repository.createReceipt({
     dedupeKey,
     eventId: payload.id,
-    transactionDigest: payload.transactionDigest ?? payload.digest,
+    transactionDigest: payload.transactionDigest ?? payload.txDigest ?? payload.digest,
     eventSequence: stringOrUndefined(payload.eventSequence ?? payload.eventSeq),
     eventType: payload.type,
     checkpoint: stringOrUndefined(payload.checkpoint),
@@ -95,7 +95,11 @@ function matchSecret(
 
   let match: string | null = null;
   for (const [key, secret] of candidates) {
-    if (signatureMatches(secret, signature, body) || signatureMatches(secret, signature, `${timestamp}.${body}`)) {
+    if (
+      signatureMatches(secret, signature, body) ||
+      signatureMatches(secret, signature, `${timestamp}.${body}`) ||
+      inodraSignatureMatches(secret, signature, body)
+    ) {
       if (match) return null;
       match = key;
     }
@@ -107,6 +111,30 @@ function signatureMatches(secret: string, signature: string, payload: string): b
   const expected = crypto.createHmac("sha256", secret).update(payload).digest();
   const provided = decodeSignature(signature);
   return provided !== null && provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+}
+
+function inodraSignatureMatches(secret: string, signature: string, body: string): boolean {
+  const parsed = parseInodraSignature(signature);
+  if (!parsed) return false;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${parsed.timestamp}.${body}`)
+    .digest();
+  const provided = Buffer.from(parsed.signature, "hex");
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+}
+
+function parseInodraSignature(signature: string): { timestamp: string; signature: string } | null {
+  const parts = Object.fromEntries(
+    signature.split(",").map((part) => {
+      const [key, ...value] = part.trim().split("=");
+      return [key, value.join("=")];
+    }),
+  );
+  const timestamp = parts.t;
+  const v1 = parts.v1;
+  if (!timestamp || !/^[a-f0-9]{64}$/i.test(v1 ?? "")) return null;
+  return { timestamp, signature: v1 };
 }
 
 function decodeSignature(signature: string): Buffer | null {

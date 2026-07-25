@@ -112,6 +112,50 @@ test("accepts events emitted under the original package id after an upgrade", as
   assert.equal(repository.offers.get("0")?.transactionDigest, "tx-original");
 });
 
+test("accepts Inodra timestamped signatures and nested payloads", async () => {
+  const repository = new InMemoryRepository();
+  const body = JSON.stringify({
+    payloadVersion: 1,
+    payload: {
+      id: "tx-inodra:0",
+      activityType: "package_event",
+      txDigest: "tx-inodra",
+      eventSequence: 0,
+      checkpoint: 10,
+      type: `${packageId}::protocol::OfferCreated`,
+      data: {
+        offer_id: "0",
+        offer_object_id: "0xoffer",
+        lender: "0xlender",
+        principal_amount: "1000",
+        fixed_interest_amount: "100",
+        total_due_amount: "1100",
+        collateral_required: "50",
+        duration_ms: "1000",
+        expires_at_ms: "2000",
+        created_at_ms: "100",
+      },
+    },
+  });
+  const timestamp = Math.floor(now.getTime() / 1000).toString();
+  const signature = `t=${timestamp},v1=${crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${body}`)
+    .digest("hex")}`;
+
+  const response = await handleInodraWebhook(
+    webhookEvent(body, signature),
+    loadConfig({ SUI_PACKAGE_ID: packageId, INODRA_WEBHOOK_SECRET: secret }),
+    repository,
+    { default: secret },
+    now,
+  );
+
+  assert.equal(response.statusCode, 202);
+  assert.equal(repository.receipts.get("tx-inodra:0")?.transactionDigest, "tx-inodra");
+  assert.equal(repository.offers.get("0")?.transactionDigest, "tx-inodra");
+});
+
 test("LoanCreated accepts offer and creates active loan", async () => {
   const repository = new InMemoryRepository();
   await repository.upsertOffer({
