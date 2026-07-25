@@ -14,6 +14,7 @@ export interface AppConfig {
   webhookSecret?: string;
   webhookSecretsSecretName?: string;
   webhookSecretsParameterName?: string;
+  liveCoinWatchApiKey?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -39,5 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webhookSecret: env.INODRA_WEBHOOK_SECRET,
     webhookSecretsSecretName: env.INODRA_WEBHOOK_SECRETS_SECRET_NAME,
     webhookSecretsParameterName: env.INODRA_WEBHOOK_SECRETS_PARAMETER_NAME,
+    liveCoinWatchApiKey: env.LIVECOINWATCH_API_KEY,
   };
 }

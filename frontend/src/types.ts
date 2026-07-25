@@ -12,6 +12,14 @@ export interface AppConfig {
   principalCoinType: string;
 }
 
+export interface MarketPrice {
+  source: "livecoinwatch";
+  base: "BTC";
+  quote: "USDC";
+  rate: string;
+  updatedAt: string;
+}
+
 export interface LoanOffer {
   offerId: string;
   offerObjectId: string;

@@ -430,6 +430,12 @@ th {
   gap: 6px;
 }
 
+.field small {
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .field input {
   width: 100%;
   min-height: 56px;
@@ -440,6 +446,11 @@ th {
   color: var(--ink);
   font-family: var(--font-technical);
   box-shadow: var(--card-inset);
+}
+
+.field input[readonly] {
+  color: var(--body);
+  cursor: not-allowed;
 }
 
 .field input:focus {

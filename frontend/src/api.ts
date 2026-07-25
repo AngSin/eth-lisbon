@@ -1,5 +1,5 @@
 import { API_BASE_URL, FALLBACK_CONFIG } from "./config";
-import type { AppConfig, Loan, LoanOffer, RiskScore } from "./types";
+import type { AppConfig, Loan, LoanOffer, MarketPrice, RiskScore } from "./types";
 
 export async function fetchConfig(): Promise<AppConfig> {
   try {
@@ -25,6 +25,10 @@ export async function fetchLoan(loanId: string): Promise<Loan | null> {
   if (!response.ok) throw new Error(`API ${response.status}`);
   const body = (await response.json()) as { loan: Loan };
   return body.loan;
+}
+
+export async function fetchBtcUsdcPrice(): Promise<MarketPrice> {
+  return request<MarketPrice>("/market/btc-usdc");
 }
 
 export async function riskScore(input: {

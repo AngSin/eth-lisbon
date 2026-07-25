@@ -13,7 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { fetchAccountLoans, fetchConfig, fetchOffers } from "./api";
+import { fetchAccountLoans, fetchBtcUsdcPrice, fetchConfig, fetchOffers } from "./api";
 import {
   COLLATERAL_DECIMALS,
   COLLATERAL_SYMBOL,
@@ -43,7 +43,7 @@ interface Notice {
 interface LendForm {
   principal: string;
   collateral: string;
-  interest: string;
+  aprPercent: string;
   durationDays: string;
   expiresDays: string;
   btcUsd: string;
@@ -52,7 +52,7 @@ interface LendForm {
 const initialForm: LendForm = {
   principal: "1000",
   collateral: "0.05",
-  interest: "75",
+  aprPercent: "12",
   durationDays: "30",
   expiresDays: "7",
   btcUsd: "60000",
@@ -78,6 +78,8 @@ function App() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [marketBtcUsd, setMarketBtcUsd] = useState<string | null>(null);
+  const [marketUpdatedAt, setMarketUpdatedAt] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -98,6 +100,21 @@ function App() {
   useEffect(() => {
     void refresh();
   }, [account?.address]);
+
+  useEffect(() => {
+    void fetchBtcUsdcPrice()
+      .then((price) => {
+        setMarketUpdatedAt(price.updatedAt);
+        const rounded = Number(price.rate).toFixed(PRINCIPAL_DECIMALS);
+        if (Number.isFinite(Number(rounded))) {
+          setMarketBtcUsd(rounded);
+        }
+      })
+      .catch(() => {
+        setMarketBtcUsd(null);
+        setMarketUpdatedAt(null);
+      });
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem("nomad-theme", theme);
@@ -191,6 +208,8 @@ function App() {
               config={config}
               offers={offers}
               loans={loans}
+              marketBtcUsd={marketBtcUsd}
+              marketUpdatedAt={marketUpdatedAt}
               accountAddress={account?.address}
               onOpenOffer={(offer) => {
                 setSelectedOffer(offer);
@@ -205,9 +224,13 @@ function App() {
                 execute(async () => {
                   if (!account) throw new Error("Connect a wallet first");
                   const principalAmount = parseUnits(form.principal, PRINCIPAL_DECIMALS);
-                  const fixedInterestAmount = parseUnits(form.interest, PRINCIPAL_DECIMALS);
-                  const collateralRequired = parseUnits(form.collateral, COLLATERAL_DECIMALS);
                   const durationMs = Number(BigInt(form.durationDays) * 86_400_000n);
+                  const fixedInterestAmount = fixedInterestFromApr({
+                    principalAmount,
+                    aprBps: parsePercentBps(form.aprPercent),
+                    durationMs,
+                  });
+                  const collateralRequired = parseUnits(form.collateral, COLLATERAL_DECIMALS);
                   const expiresAtMs = Number(BigInt(Date.now()) + BigInt(form.expiresDays) * 86_400_000n);
                   const tx = await buildCreateOfferTx({
                     client: suiClient,
@@ -366,19 +389,45 @@ function LendView(props: {
   config: AppConfig;
   offers: LoanOffer[];
   loans: Loan[];
+  marketBtcUsd: string | null;
+  marketUpdatedAt: string | null;
   accountAddress?: string;
   onCreate: (form: LendForm) => void;
   onOpenOffer: (offer: LoanOffer) => void;
   onOpenLoan: (loan: Loan) => void;
 }) {
   const [form, setForm] = useState<LendForm>(initialForm);
+  useEffect(() => {
+    if (props.marketBtcUsd) {
+      setForm((prev) => ({ ...prev, btcUsd: props.marketBtcUsd! }));
+    }
+  }, [props.marketBtcUsd]);
+  const durationMs = useMemo(() => Number(BigInt(form.durationDays || "0") * 86_400_000n), [form.durationDays]);
+  const principalAmount = useMemo(() => {
+    try {
+      return parseUnits(form.principal, PRINCIPAL_DECIMALS);
+    } catch {
+      return 0n;
+    }
+  }, [form.principal]);
+  const fixedInterestAmount = useMemo(() => {
+    try {
+      return fixedInterestFromApr({
+        principalAmount,
+        aprBps: parsePercentBps(form.aprPercent),
+        durationMs,
+      });
+    } catch {
+      return 0n;
+    }
+  }, [form.aprPercent, durationMs, principalAmount]);
   const risk = useMemo(() => {
     try {
       return localRiskScore({
-        principalAmount: parseUnits(form.principal, PRINCIPAL_DECIMALS),
-        fixedInterestAmount: parseUnits(form.interest, PRINCIPAL_DECIMALS),
+        principalAmount,
+        fixedInterestAmount,
         collateralAmount: parseUnits(form.collateral, COLLATERAL_DECIMALS),
-        durationMs: Number(BigInt(form.durationDays || "0") * 86_400_000n),
+        durationMs,
         btcUsdPrice: parseUnits(form.btcUsd, PRINCIPAL_DECIMALS),
       });
     } catch {
@@ -401,12 +450,24 @@ function LendView(props: {
         <div className="form-grid">
           <TextField label={`Principal amount (${PRINCIPAL_SYMBOL})`} value={form.principal} onChange={(principal) => setForm((prev) => ({ ...prev, principal }))} />
           <TextField label={`Collateral amount (${COLLATERAL_SYMBOL})`} value={form.collateral} onChange={(collateral) => setForm((prev) => ({ ...prev, collateral }))} />
-          <TextField label="Fixed interest" value={form.interest} onChange={(interest) => setForm((prev) => ({ ...prev, interest }))} />
+          <TextField label="Annualized interest (APR %)" value={form.aprPercent} onChange={(aprPercent) => setForm((prev) => ({ ...prev, aprPercent }))} />
           <TextField label="Duration days" value={form.durationDays} onChange={(durationDays) => setForm((prev) => ({ ...prev, durationDays }))} />
           <TextField label="Offer expiry days" value={form.expiresDays} onChange={(expiresDays) => setForm((prev) => ({ ...prev, expiresDays }))} />
-          <TextField label="BTC/USD" value={form.btcUsd} onChange={(btcUsd) => setForm((prev) => ({ ...prev, btcUsd }))} />
+          <TextField
+            label={`BTC/${PRINCIPAL_SYMBOL} reference`}
+            value={form.btcUsd}
+            onChange={() => undefined}
+            readOnly
+            hint={props.marketUpdatedAt ? `LiveCoinWatch ${dateTime(Date.parse(props.marketUpdatedAt))}` : "Fallback until LiveCoinWatch is configured"}
+          />
         </div>
-        {risk && <RiskPanel score={risk} />}
+        {risk && (
+          <RiskPanel
+            score={risk}
+            aprPercent={form.aprPercent}
+            fixedInterestAmount={fixedInterestAmount}
+          />
+        )}
         <button className="pill primary wide" disabled={!props.accountAddress} type="submit">
           Sign create offer
         </button>
@@ -548,20 +609,39 @@ function Metric(props: { label: string; value: string }) {
   );
 }
 
-function TextField(props: { label: string; value: string; onChange: (value: string) => void }) {
+function TextField(props: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  readOnly?: boolean;
+  hint?: string;
+}) {
   return (
     <label className="field">
       <span>{props.label}</span>
-      <input inputMode="decimal" value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <input
+        inputMode="decimal"
+        value={props.value}
+        readOnly={props.readOnly}
+        aria-readonly={props.readOnly}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+      {props.hint && <small>{props.hint}</small>}
     </label>
   );
 }
 
-function RiskPanel(props: { score: RiskScore }) {
+function RiskPanel(props: {
+  score: RiskScore;
+  aprPercent: string;
+  fixedInterestAmount: bigint;
+}) {
   return (
     <div className="risk-panel">
       <div className="risk-topline">
         <RiskBadge risk={props.score.riskLevel} />
+        <span>APR {formatApr(props.aprPercent)}</span>
+        <span>Fixed {formatUnits(props.fixedInterestAmount, PRINCIPAL_DECIMALS, PRINCIPAL_SYMBOL)}</span>
         <span>LTV {formatBps(props.score.startingLtvBps)}</span>
         <span>Buffer {formatBps(props.score.collateralBufferBps)}</span>
       </div>
@@ -602,3 +682,26 @@ function DetailGrid(props: { rows: Array<[string, string]> }) {
 }
 
 export default App;
+
+function parsePercentBps(input: string): bigint {
+  const parsed = parseUnits(input, 2);
+  if (parsed < 0n) throw new Error("APR must be non-negative");
+  return parsed;
+}
+
+function fixedInterestFromApr(input: {
+  principalAmount: bigint;
+  aprBps: bigint;
+  durationMs: number;
+}): bigint {
+  if (!Number.isFinite(input.durationMs) || input.durationMs <= 0) {
+    throw new Error("Duration must be positive");
+  }
+  return (input.principalAmount * input.aprBps * BigInt(Math.trunc(input.durationMs))) / (10_000n * 365n * 86_400_000n);
+}
+
+function formatApr(input: string): string {
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed)) return "n/a";
+  return `${parsed.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}

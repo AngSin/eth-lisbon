@@ -17,6 +17,7 @@ export interface DeploymentConfig {
   principalCoinType: string;
   inodraWebhookSecretsSecretName?: string;
   inodraWebhookSecretsParameterName?: string;
+  liveCoinWatchApiKey?: string;
 }
 
 export function recordNameForZone(domainName: string, hostedZoneName: string): string {
@@ -55,6 +56,7 @@ export function loadDeploymentConfig(app: App): DeploymentConfig {
     principalCoinType: read("principalCoinType", read("dusdcCoinType")),
     inodraWebhookSecretsSecretName: optional(read("inodraWebhookSecretsSecretName")),
     inodraWebhookSecretsParameterName: optional(read("inodraWebhookSecretsParameterName")),
+    liveCoinWatchApiKey: optional(read("liveCoinWatchApiKey", process.env.LIVECOINWATCH_API_KEY ?? "")),
   };
 }
 

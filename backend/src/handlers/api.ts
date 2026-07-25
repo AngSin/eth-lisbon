@@ -2,6 +2,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "
 import { loadConfig, type AppConfig } from "../config.js";
 import { DynamoRepository } from "../db.js";
 import { json, parseJsonBody } from "../http.js";
+import { fetchBtcUsdcPrice } from "../market.js";
 import { computeRiskScore, type RiskScoreInput } from "../risk.js";
 import type { OfferStatus, Repository, RiskLevel } from "../types.js";
 
@@ -51,6 +52,9 @@ export async function handleApi(
           maxLtvBps: parseOptionalNumber(query.maxLtvBps),
         }),
       });
+    }
+    if (method === "GET" && path === "/market/btc-usdc") {
+      return json(200, await fetchBtcUsdcPrice(config));
     }
     if (method === "GET" && path.startsWith("/loans/")) {
       const loanId = decodeURIComponent(path.slice("/loans/".length));

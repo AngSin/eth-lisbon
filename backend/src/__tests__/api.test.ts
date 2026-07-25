@@ -64,6 +64,38 @@ test("GET /offers returns open offers by default", async () => {
   assert.deepEqual(body.offers.map((offer) => offer.offerId), ["1"]);
 });
 
+test("GET /market/btc-usdc returns LiveCoinWatch BTC/USDC rate", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    assert.equal(input, "https://api.livecoinwatch.com/coins/single");
+    assert.equal(init?.method, "POST");
+    assert.equal((init?.headers as Record<string, string>)["x-api-key"], "test-key");
+    assert.deepEqual(JSON.parse(String(init?.body)), {
+      currency: "USDC",
+      code: "BTC",
+      meta: false,
+    });
+    return new Response(JSON.stringify({ rate: 61234.1234567 }), { status: 200 });
+  };
+
+  try {
+    const response = await handleApi(
+      apiEvent("GET", "/market/btc-usdc"),
+      loadConfig({ LIVECOINWATCH_API_KEY: "test-key" }),
+      new InMemoryRepository(),
+    );
+    const body = JSON.parse(response.body ?? "{}");
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.source, "livecoinwatch");
+    assert.equal(body.base, "BTC");
+    assert.equal(body.quote, "USDC");
+    assert.equal(body.rate, "61234.123457");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function apiEvent(
   method: string,
   path: string,

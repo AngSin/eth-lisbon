@@ -59,5 +59,9 @@ Optional repository variables:
 - `INODRA_WEBHOOK_SECRETS_SECRET_NAME`: AWS Secrets Manager secret name for webhook secrets.
 - `INODRA_WEBHOOK_SECRETS_PARAMETER_NAME`: SSM Parameter Store name for webhook secrets.
 
+Optional repository secrets:
+
+- `LIVECOINWATCH_API_KEY`: used by the API to fetch the BTC/USDC reference price for lender risk previews.
+
 Store webhook secret values in AWS Secrets Manager or SSM, and give the AWS
 deploy user permission to read them.

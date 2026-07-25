@@ -88,6 +88,9 @@ export class ApiStack extends Stack {
       ...(props.config.inodraWebhookSecretsParameterName
         ? { INODRA_WEBHOOK_SECRETS_PARAMETER_NAME: props.config.inodraWebhookSecretsParameterName }
         : {}),
+      ...(props.config.liveCoinWatchApiKey
+        ? { LIVECOINWATCH_API_KEY: props.config.liveCoinWatchApiKey }
+        : {}),
     };
 
     const apiHandler = this.backendFunction("ApiHandler", "api.ts", commonEnvironment);
