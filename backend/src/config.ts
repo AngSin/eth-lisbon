@@ -4,8 +4,8 @@ export interface AppConfig {
   suiRpcUrl: string;
   suiPackageId: string;
   suiRegistryObjectId: string;
-  hbtcCoinType: string;
-  dusdcCoinType: string;
+  collateralCoinType: string;
+  principalCoinType: string;
   loanOffersTable: string;
   loansTable: string;
   webhookReceiptsTable: string;
@@ -25,8 +25,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.SUI_PACKAGE_ID ??
       "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
     suiRegistryObjectId: env.SUI_REGISTRY_OBJECT_ID ?? "",
-    hbtcCoinType: env.HBTC_COIN_TYPE ?? "",
-    dusdcCoinType: env.DUSDC_COIN_TYPE ?? "",
+    collateralCoinType:
+      env.COLLATERAL_COIN_TYPE ?? env.HBTC_COIN_TYPE ?? "",
+    principalCoinType:
+      env.PRINCIPAL_COIN_TYPE ?? env.DUSDC_COIN_TYPE ?? "",
     loanOffersTable: env.LOAN_OFFERS_TABLE ?? "LoanOffers",
     loansTable: env.LOANS_TABLE ?? "Loans",
     webhookReceiptsTable: env.WEBHOOK_RECEIPTS_TABLE ?? "WebhookReceipts",

@@ -17,8 +17,8 @@ Deploy with the requested AWS profile:
 ```bash
 AWS_PROFILE=unnatural-selection npm run deploy -- \
   -c suiRegistryObjectId=<REGISTRY_OBJECT_ID> \
-  -c hbtcCoinType=<HBTC_COIN_TYPE> \
-  -c dusdcCoinType=<DUSDC_COIN_TYPE> \
+  -c collateralCoinType=<COLLATERAL_COIN_TYPE> \
+  -c principalCoinType=<PRINCIPAL_COIN_TYPE> \
   -c inodraWebhookSecretsSecretName=<SECRET_NAME>
 ```
 

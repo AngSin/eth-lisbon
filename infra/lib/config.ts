@@ -9,8 +9,8 @@ export interface DeploymentConfig {
   suiRpcUrl: string;
   suiPackageId: string;
   suiRegistryObjectId: string;
-  hbtcCoinType: string;
-  dusdcCoinType: string;
+  collateralCoinType: string;
+  principalCoinType: string;
   inodraWebhookSecretsSecretName?: string;
   inodraWebhookSecretsParameterName?: string;
 }
@@ -40,8 +40,8 @@ export function loadDeploymentConfig(app: App): DeploymentConfig {
       "0x86f4bd9977438c3da6060e3b17b0966efacd3e3c18b977f736933dcdb9c07142",
     ),
     suiRegistryObjectId: read("suiRegistryObjectId"),
-    hbtcCoinType: read("hbtcCoinType"),
-    dusdcCoinType: read("dusdcCoinType"),
+    collateralCoinType: read("collateralCoinType", read("hbtcCoinType")),
+    principalCoinType: read("principalCoinType", read("dusdcCoinType")),
     inodraWebhookSecretsSecretName: optional(read("inodraWebhookSecretsSecretName")),
     inodraWebhookSecretsParameterName: optional(read("inodraWebhookSecretsParameterName")),
   };

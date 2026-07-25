@@ -1,4 +1,4 @@
-/// Fixed-term DUSDC loans against hBTC collateral.
+/// Fixed-term principal loans against collateral.
 #[allow(lint(public_entry))]
 module nomad_loans::protocol;
 
@@ -29,13 +29,13 @@ const ELoanNotActive: u64 = 10;
 const EInsufficientRepayment: u64 = 11;
 const ELoanMatured: u64 = 12;
 const ELoanNotMatured: u64 = 13;
-public struct LoanRegistry<phantom DUSDC, phantom HBTC> has key {
+public struct LoanRegistry<phantom PRINCIPAL, phantom COLLATERAL> has key {
     id: UID,
     next_offer_id: u64,
     next_loan_id: u64,
 }
 
-public struct LoanOffer<phantom DUSDC, phantom HBTC> has key {
+public struct LoanOffer<phantom PRINCIPAL, phantom COLLATERAL> has key {
     id: UID,
     offer_id: u64,
     lender: address,
@@ -47,10 +47,10 @@ public struct LoanOffer<phantom DUSDC, phantom HBTC> has key {
     expires_at_ms: u64,
     created_at_ms: u64,
     status: u8,
-    principal_escrow: Option<Coin<DUSDC>>,
+    principal_escrow: Option<Coin<PRINCIPAL>>,
 }
 
-public struct ActiveLoan<phantom DUSDC, phantom HBTC> has key {
+public struct ActiveLoan<phantom PRINCIPAL, phantom COLLATERAL> has key {
     id: UID,
     loan_id: u64,
     offer_id: u64,
@@ -63,7 +63,7 @@ public struct ActiveLoan<phantom DUSDC, phantom HBTC> has key {
     started_at_ms: u64,
     maturity_ms: u64,
     status: u8,
-    collateral_escrow: Option<Coin<HBTC>>,
+    collateral_escrow: Option<Coin<COLLATERAL>>,
 }
 
 public struct OfferCreated has copy, drop {
@@ -125,7 +125,7 @@ public struct CollateralClaimed has copy, drop {
     claimed_at_ms: u64,
 }
 
-public fun new_registry<DUSDC, HBTC>(ctx: &mut TxContext): LoanRegistry<DUSDC, HBTC> {
+public fun new_registry<PRINCIPAL, COLLATERAL>(ctx: &mut TxContext): LoanRegistry<PRINCIPAL, COLLATERAL> {
     LoanRegistry {
         id: object::new(ctx),
         next_offer_id: 0,
@@ -133,13 +133,13 @@ public fun new_registry<DUSDC, HBTC>(ctx: &mut TxContext): LoanRegistry<DUSDC, H
     }
 }
 
-public entry fun init_registry<DUSDC, HBTC>(ctx: &mut TxContext) {
-    transfer::share_object(new_registry<DUSDC, HBTC>(ctx));
+public entry fun init_registry<PRINCIPAL, COLLATERAL>(ctx: &mut TxContext) {
+    transfer::share_object(new_registry<PRINCIPAL, COLLATERAL>(ctx));
 }
 
-public entry fun create_offer<DUSDC, HBTC>(
-    registry: &mut LoanRegistry<DUSDC, HBTC>,
-    mut dusdc_coin: Coin<DUSDC>,
+public entry fun create_offer<PRINCIPAL, COLLATERAL>(
+    registry: &mut LoanRegistry<PRINCIPAL, COLLATERAL>,
+    mut principal_coin: Coin<PRINCIPAL>,
     principal_amount: u64,
     fixed_interest_amount: u64,
     collateral_required: u64,
@@ -153,20 +153,20 @@ public entry fun create_offer<DUSDC, HBTC>(
     assert!(collateral_required > 0, EZeroCollateral);
     assert!(duration_ms > 0, EZeroDuration);
     assert!(expires_at_ms > now_ms, EExpiredAtNotFuture);
-    assert!(dusdc_coin.value() >= principal_amount, EPrincipalMismatch);
+    assert!(principal_coin.value() >= principal_amount, EPrincipalMismatch);
 
     let lender = ctx.sender();
-    let principal_escrow = dusdc_coin.split(principal_amount, ctx);
-    let change = dusdc_coin.value();
+    let principal_escrow = principal_coin.split(principal_amount, ctx);
+    let change = principal_coin.value();
     if (change > 0) {
-        transfer::public_transfer(dusdc_coin, lender);
+        transfer::public_transfer(principal_coin, lender);
     } else {
-        dusdc_coin.destroy_zero();
+        principal_coin.destroy_zero();
     };
 
     let offer_id = registry.next_offer_id;
     registry.next_offer_id = offer_id + 1;
-    let offer = LoanOffer<DUSDC, HBTC> {
+    let offer = LoanOffer<PRINCIPAL, COLLATERAL> {
         id: object::new(ctx),
         offer_id,
         lender,
@@ -199,8 +199,8 @@ public entry fun create_offer<DUSDC, HBTC>(
     transfer::share_object(offer);
 }
 
-public entry fun cancel_offer<DUSDC, HBTC>(
-    offer: &mut LoanOffer<DUSDC, HBTC>,
+public entry fun cancel_offer<PRINCIPAL, COLLATERAL>(
+    offer: &mut LoanOffer<PRINCIPAL, COLLATERAL>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -222,10 +222,10 @@ public entry fun cancel_offer<DUSDC, HBTC>(
     transfer::public_transfer(principal_escrow, lender);
 }
 
-public entry fun accept_offer<DUSDC, HBTC>(
-    registry: &mut LoanRegistry<DUSDC, HBTC>,
-    offer: &mut LoanOffer<DUSDC, HBTC>,
-    mut hbtc_coin: Coin<HBTC>,
+public entry fun accept_offer<PRINCIPAL, COLLATERAL>(
+    registry: &mut LoanRegistry<PRINCIPAL, COLLATERAL>,
+    offer: &mut LoanOffer<PRINCIPAL, COLLATERAL>,
+    mut collateral_coin: Coin<COLLATERAL>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -233,14 +233,14 @@ public entry fun accept_offer<DUSDC, HBTC>(
     let borrower = ctx.sender();
     assert!(offer.status == STATUS_OPEN, EOfferNotOpen);
     assert!(now_ms <= offer.expires_at_ms, EOfferExpired);
-    assert!(hbtc_coin.value() >= offer.collateral_required, EInsufficientCollateral);
+    assert!(collateral_coin.value() >= offer.collateral_required, EInsufficientCollateral);
 
-    let collateral_escrow = hbtc_coin.split(offer.collateral_required, ctx);
-    let collateral_change = hbtc_coin.value();
+    let collateral_escrow = collateral_coin.split(offer.collateral_required, ctx);
+    let collateral_change = collateral_coin.value();
     if (collateral_change > 0) {
-        transfer::public_transfer(hbtc_coin, borrower);
+        transfer::public_transfer(collateral_coin, borrower);
     } else {
-        hbtc_coin.destroy_zero();
+        collateral_coin.destroy_zero();
     };
 
     let principal_escrow = offer.principal_escrow.extract();
@@ -248,7 +248,7 @@ public entry fun accept_offer<DUSDC, HBTC>(
 
     let loan_id = registry.next_loan_id;
     registry.next_loan_id = loan_id + 1;
-    let loan = ActiveLoan<DUSDC, HBTC> {
+    let loan = ActiveLoan<PRINCIPAL, COLLATERAL> {
         id: object::new(ctx),
         loan_id,
         offer_id: offer.offer_id,
@@ -285,9 +285,9 @@ public entry fun accept_offer<DUSDC, HBTC>(
     transfer::share_object(loan);
 }
 
-public entry fun repay<DUSDC, HBTC>(
-    loan: &mut ActiveLoan<DUSDC, HBTC>,
-    mut dusdc_coin: Coin<DUSDC>,
+public entry fun repay<PRINCIPAL, COLLATERAL>(
+    loan: &mut ActiveLoan<PRINCIPAL, COLLATERAL>,
+    mut principal_coin: Coin<PRINCIPAL>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -296,14 +296,14 @@ public entry fun repay<DUSDC, HBTC>(
     assert!(borrower == loan.borrower, ENotBorrower);
     assert!(loan.status == STATUS_ACTIVE, ELoanNotActive);
     assert!(now_ms <= loan.maturity_ms, ELoanMatured);
-    assert!(dusdc_coin.value() >= loan.total_due_amount, EInsufficientRepayment);
+    assert!(principal_coin.value() >= loan.total_due_amount, EInsufficientRepayment);
 
-    let repayment = dusdc_coin.split(loan.total_due_amount, ctx);
-    let change = dusdc_coin.value();
+    let repayment = principal_coin.split(loan.total_due_amount, ctx);
+    let change = principal_coin.value();
     if (change > 0) {
-        transfer::public_transfer(dusdc_coin, borrower);
+        transfer::public_transfer(principal_coin, borrower);
     } else {
-        dusdc_coin.destroy_zero();
+        principal_coin.destroy_zero();
     };
 
     let collateral = loan.collateral_escrow.extract();
@@ -324,8 +324,8 @@ public entry fun repay<DUSDC, HBTC>(
     transfer::public_transfer(collateral, borrower);
 }
 
-public entry fun claim_default<DUSDC, HBTC>(
-    loan: &mut ActiveLoan<DUSDC, HBTC>,
+public entry fun claim_default<PRINCIPAL, COLLATERAL>(
+    loan: &mut ActiveLoan<PRINCIPAL, COLLATERAL>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -351,27 +351,27 @@ public entry fun claim_default<DUSDC, HBTC>(
     transfer::public_transfer(collateral, lender);
 }
 
-public fun offer_status<DUSDC, HBTC>(offer: &LoanOffer<DUSDC, HBTC>): u8 {
+public fun offer_status<PRINCIPAL, COLLATERAL>(offer: &LoanOffer<PRINCIPAL, COLLATERAL>): u8 {
     offer.status
 }
 
-public fun loan_status<DUSDC, HBTC>(loan: &ActiveLoan<DUSDC, HBTC>): u8 {
+public fun loan_status<PRINCIPAL, COLLATERAL>(loan: &ActiveLoan<PRINCIPAL, COLLATERAL>): u8 {
     loan.status
 }
 
-public fun offer_id<DUSDC, HBTC>(offer: &LoanOffer<DUSDC, HBTC>): u64 {
+public fun offer_id<PRINCIPAL, COLLATERAL>(offer: &LoanOffer<PRINCIPAL, COLLATERAL>): u64 {
     offer.offer_id
 }
 
-public fun loan_id<DUSDC, HBTC>(loan: &ActiveLoan<DUSDC, HBTC>): u64 {
+public fun loan_id<PRINCIPAL, COLLATERAL>(loan: &ActiveLoan<PRINCIPAL, COLLATERAL>): u64 {
     loan.loan_id
 }
 
-public fun offer_has_escrow<DUSDC, HBTC>(offer: &LoanOffer<DUSDC, HBTC>): bool {
+public fun offer_has_escrow<PRINCIPAL, COLLATERAL>(offer: &LoanOffer<PRINCIPAL, COLLATERAL>): bool {
     offer.principal_escrow.is_some()
 }
 
-public fun loan_has_collateral<DUSDC, HBTC>(loan: &ActiveLoan<DUSDC, HBTC>): bool {
+public fun loan_has_collateral<PRINCIPAL, COLLATERAL>(loan: &ActiveLoan<PRINCIPAL, COLLATERAL>): bool {
     loan.collateral_escrow.is_some()
 }
 

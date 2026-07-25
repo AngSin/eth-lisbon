@@ -32,8 +32,8 @@ export async function handleApi(
         suiRpcUrl: config.suiRpcUrl,
         suiPackageId: config.suiPackageId,
         suiRegistryObjectId: config.suiRegistryObjectId,
-        hbtcCoinType: config.hbtcCoinType,
-        dusdcCoinType: config.dusdcCoinType,
+        collateralCoinType: config.collateralCoinType,
+        principalCoinType: config.principalCoinType,
       });
     }
     if (method === "GET" && path === "/offers") {

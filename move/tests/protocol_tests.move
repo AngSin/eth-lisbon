@@ -8,27 +8,27 @@ use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
 use sui::test_scenario::{Self, Scenario};
 
-public struct DUSDC has drop {}
-public struct HBTC has drop {}
+public struct PrincipalCoin has drop {}
+public struct CollateralCoin has drop {}
 
 const LENDER: address = @0xA;
 const BORROWER: address = @0xB;
 const THIRD_PARTY: address = @0xC;
 
-const PRINCIPAL: u64 = 1_000;
+const PRINCIPAL_AMOUNT: u64 = 1_000;
 const INTEREST: u64 = 100;
-const COLLATERAL: u64 = 50;
+const COLLATERAL_AMOUNT: u64 = 50;
 const DURATION_MS: u64 = 1_000;
 const EXPIRES_AT_MS: u64 = 10_000;
 
 #[test]
-fun create_offer_holds_dusdc_escrow() {
+fun create_offer_holds_principal_escrow() {
     let mut s = setup(LENDER);
 
     create_standard_offer(&mut s);
     s.next_tx(LENDER);
 
-    test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(&mut s, |offer, _s| {
+    test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(&mut s, |offer, _s| {
         assert_eq!(offer.offer_status(), protocol::status_open());
         assert!(offer.offer_has_escrow());
     });
@@ -43,7 +43,7 @@ fun lender_can_cancel_open_offer_and_get_principal_back() {
     create_standard_offer(&mut s);
     s.next_tx(LENDER);
 
-    test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(&mut s, |offer, s| {
+    test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(&mut s, |offer, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::cancel_offer(offer, clock, s.ctx());
         });
@@ -52,8 +52,8 @@ fun lender_can_cancel_open_offer_and_get_principal_back() {
     });
 
     s.next_tx(LENDER);
-    let coin = s.take_from_sender<Coin<DUSDC>>();
-    assert_eq!(coin.value(), PRINCIPAL);
+    let coin = s.take_from_sender<Coin<PrincipalCoin>>();
+    assert_eq!(coin.value(), PRINCIPAL_AMOUNT);
     coin.burn_for_testing();
 
     s.end();
@@ -66,9 +66,9 @@ fun accepting_offer_transfers_principal_and_escrows_collateral() {
     create_standard_offer(&mut s);
     s.next_tx(BORROWER);
 
-    let collateral = coin::mint_for_testing<HBTC>(COLLATERAL, s.ctx());
-    test_scenario::with_shared!<LoanRegistry<DUSDC, HBTC>>(&mut s, |registry, s| {
-        test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(s, |offer, s| {
+    let collateral = coin::mint_for_testing<CollateralCoin>(COLLATERAL_AMOUNT, s.ctx());
+    test_scenario::with_shared!<LoanRegistry<PrincipalCoin, CollateralCoin>>(&mut s, |registry, s| {
+        test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(s, |offer, s| {
             test_scenario::with_shared!<Clock>(s, |clock, s| {
                 protocol::accept_offer(registry, offer, collateral, clock, s.ctx());
             });
@@ -78,11 +78,11 @@ fun accepting_offer_transfers_principal_and_escrows_collateral() {
     });
 
     s.next_tx(BORROWER);
-    let principal = s.take_from_sender<Coin<DUSDC>>();
-    assert_eq!(principal.value(), PRINCIPAL);
+    let principal = s.take_from_sender<Coin<PrincipalCoin>>();
+    assert_eq!(principal.value(), PRINCIPAL_AMOUNT);
     principal.burn_for_testing();
 
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, _s| {
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, _s| {
         assert_eq!(loan.loan_status(), protocol::status_active());
         assert!(loan.loan_has_collateral());
     });
@@ -96,8 +96,8 @@ fun repayment_requires_full_due_and_returns_collateral() {
     accept_standard_offer(&mut s);
 
     s.next_tx(BORROWER);
-    let repayment = coin::mint_for_testing<DUSDC>(PRINCIPAL + INTEREST, s.ctx());
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, s| {
+    let repayment = coin::mint_for_testing<PrincipalCoin>(PRINCIPAL_AMOUNT + INTEREST, s.ctx());
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::repay(loan, repayment, clock, s.ctx());
         });
@@ -106,13 +106,13 @@ fun repayment_requires_full_due_and_returns_collateral() {
     });
 
     s.next_tx(BORROWER);
-    let collateral = s.take_from_sender<Coin<HBTC>>();
-    assert_eq!(collateral.value(), COLLATERAL);
+    let collateral = s.take_from_sender<Coin<CollateralCoin>>();
+    assert_eq!(collateral.value(), COLLATERAL_AMOUNT);
     collateral.burn_for_testing();
 
     s.next_tx(LENDER);
-    let paid = s.take_from_sender<Coin<DUSDC>>();
-    assert_eq!(paid.value(), PRINCIPAL + INTEREST);
+    let paid = s.take_from_sender<Coin<PrincipalCoin>>();
+    assert_eq!(paid.value(), PRINCIPAL_AMOUNT + INTEREST);
     paid.burn_for_testing();
 
     s.end();
@@ -129,7 +129,7 @@ fun default_claim_only_after_maturity() {
     });
 
     s.next_tx(LENDER);
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, s| {
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::claim_default(loan, clock, s.ctx());
         });
@@ -138,8 +138,8 @@ fun default_claim_only_after_maturity() {
     });
 
     s.next_tx(LENDER);
-    let collateral = s.take_from_sender<Coin<HBTC>>();
-    assert_eq!(collateral.value(), COLLATERAL);
+    let collateral = s.take_from_sender<Coin<CollateralCoin>>();
+    assert_eq!(collateral.value(), COLLATERAL_AMOUNT);
     collateral.burn_for_testing();
 
     s.end();
@@ -151,7 +151,7 @@ fun non_lender_cannot_cancel_offer() {
     create_standard_offer(&mut s);
 
     s.next_tx(THIRD_PARTY);
-    test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(&mut s, |offer, s| {
+    test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(&mut s, |offer, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::cancel_offer(offer, clock, s.ctx());
         });
@@ -166,9 +166,9 @@ fun accept_requires_required_collateral() {
     create_standard_offer(&mut s);
 
     s.next_tx(BORROWER);
-    let collateral = coin::mint_for_testing<HBTC>(COLLATERAL - 1, s.ctx());
-    test_scenario::with_shared!<LoanRegistry<DUSDC, HBTC>>(&mut s, |registry, s| {
-        test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(s, |offer, s| {
+    let collateral = coin::mint_for_testing<CollateralCoin>(COLLATERAL_AMOUNT - 1, s.ctx());
+    test_scenario::with_shared!<LoanRegistry<PrincipalCoin, CollateralCoin>>(&mut s, |registry, s| {
+        test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(s, |offer, s| {
             test_scenario::with_shared!<Clock>(s, |clock, s| {
                 protocol::accept_offer(registry, offer, collateral, clock, s.ctx());
             });
@@ -184,8 +184,8 @@ fun repay_requires_full_due() {
     accept_standard_offer(&mut s);
 
     s.next_tx(BORROWER);
-    let underpayment = coin::mint_for_testing<DUSDC>(PRINCIPAL + INTEREST - 1, s.ctx());
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, s| {
+    let underpayment = coin::mint_for_testing<PrincipalCoin>(PRINCIPAL_AMOUNT + INTEREST - 1, s.ctx());
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::repay(loan, underpayment, clock, s.ctx());
         });
@@ -200,7 +200,7 @@ fun lender_cannot_claim_before_maturity() {
     accept_standard_offer(&mut s);
 
     s.next_tx(LENDER);
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, s| {
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::claim_default(loan, clock, s.ctx());
         });
@@ -220,8 +220,8 @@ fun borrower_cannot_repay_after_maturity() {
     });
 
     s.next_tx(BORROWER);
-    let repayment = coin::mint_for_testing<DUSDC>(PRINCIPAL + INTEREST, s.ctx());
-    test_scenario::with_shared!<ActiveLoan<DUSDC, HBTC>>(&mut s, |loan, s| {
+    let repayment = coin::mint_for_testing<PrincipalCoin>(PRINCIPAL_AMOUNT + INTEREST, s.ctx());
+    test_scenario::with_shared!<ActiveLoan<PrincipalCoin, CollateralCoin>>(&mut s, |loan, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::repay(loan, repayment, clock, s.ctx());
         });
@@ -233,21 +233,21 @@ fun borrower_cannot_repay_after_maturity() {
 fun setup(sender: address): Scenario {
     let mut s = test_scenario::begin(sender);
     s.create_system_objects();
-    protocol::init_registry<DUSDC, HBTC>(s.ctx());
+    protocol::init_registry<PrincipalCoin, CollateralCoin>(s.ctx());
     s.next_tx(sender);
     s
 }
 
 fun create_standard_offer(s: &mut Scenario) {
-    let principal = coin::mint_for_testing<DUSDC>(PRINCIPAL, s.ctx());
-    test_scenario::with_shared!<LoanRegistry<DUSDC, HBTC>>(s, |registry, s| {
+    let principal = coin::mint_for_testing<PrincipalCoin>(PRINCIPAL_AMOUNT, s.ctx());
+    test_scenario::with_shared!<LoanRegistry<PrincipalCoin, CollateralCoin>>(s, |registry, s| {
         test_scenario::with_shared!<Clock>(s, |clock, s| {
             protocol::create_offer(
                 registry,
                 principal,
-                PRINCIPAL,
+                PRINCIPAL_AMOUNT,
                 INTEREST,
-                COLLATERAL,
+                COLLATERAL_AMOUNT,
                 DURATION_MS,
                 EXPIRES_AT_MS,
                 clock,
@@ -261,9 +261,9 @@ fun accept_standard_offer(s: &mut Scenario) {
     create_standard_offer(s);
     s.next_tx(BORROWER);
 
-    let collateral = coin::mint_for_testing<HBTC>(COLLATERAL, s.ctx());
-    test_scenario::with_shared!<LoanRegistry<DUSDC, HBTC>>(s, |registry, s| {
-        test_scenario::with_shared!<LoanOffer<DUSDC, HBTC>>(s, |offer, s| {
+    let collateral = coin::mint_for_testing<CollateralCoin>(COLLATERAL_AMOUNT, s.ctx());
+    test_scenario::with_shared!<LoanRegistry<PrincipalCoin, CollateralCoin>>(s, |registry, s| {
+        test_scenario::with_shared!<LoanOffer<PrincipalCoin, CollateralCoin>>(s, |offer, s| {
             test_scenario::with_shared!<Clock>(s, |clock, s| {
                 protocol::accept_offer(registry, offer, collateral, clock, s.ctx());
             });

@@ -92,4 +92,4 @@ function bps(numerator: bigint, denominator: bigint): number {
   return Number((numerator * BPS) / denominator);
 }
 
-export const DUSDC_DECIMALS = USD_DECIMALS;
+export const PRINCIPAL_DECIMALS = USD_DECIMALS;

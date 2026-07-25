@@ -9,8 +9,8 @@ test("GET /config returns public Sui configuration", async () => {
   const config = loadConfig({
     SUI_PACKAGE_ID: "0xpackage",
     SUI_REGISTRY_OBJECT_ID: "0xregistry",
-    HBTC_COIN_TYPE: "0xhbtc::coin::HBTC",
-    DUSDC_COIN_TYPE: "0xdusdc::coin::DUSDC",
+    COLLATERAL_COIN_TYPE: "0xcollateral::coin::COLLATERAL",
+    PRINCIPAL_COIN_TYPE: "0xprincipal::coin::PRINCIPAL",
   });
   const response = await handleApi(apiEvent("GET", "/config"), config, new InMemoryRepository());
 
@@ -21,8 +21,8 @@ test("GET /config returns public Sui configuration", async () => {
     suiRpcUrl: "https://fullnode.testnet.sui.io:443",
     suiPackageId: "0xpackage",
     suiRegistryObjectId: "0xregistry",
-    hbtcCoinType: "0xhbtc::coin::HBTC",
-    dusdcCoinType: "0xdusdc::coin::DUSDC",
+    collateralCoinType: "0xcollateral::coin::COLLATERAL",
+    principalCoinType: "0xprincipal::coin::PRINCIPAL",
   });
 });
 
