@@ -121,7 +121,7 @@ function App() {
     <main className="app-shell" data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setView("borrow")}>
-          <img className="brand-logo" src="/logo.jpeg" alt="" />
+          <img className="brand-logo" src="/logo-mark.svg" alt="" />
           <span>Nomad Finance</span>
         </button>
         <nav className="nav-pills" aria-label="Primary">
