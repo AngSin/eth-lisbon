@@ -3,26 +3,26 @@ import { ArrowRight, BadgeCheck, Blocks, Gauge, ShieldCheck, Sparkles } from "lu
 const TESTNET_URL = "https://testnet.nomadfinance.io";
 
 const signals = [
-  { label: "Collateralized", value: "Sui-native" },
+  { label: "Collateral", value: "BTC backed" },
   { label: "Network", value: "Testnet" },
-  { label: "Settlement", value: "On-chain" },
+  { label: "Terms", value: "Fixed" },
 ];
 
 const features = [
   {
     icon: ShieldCheck,
-    title: "Risk rails",
-    text: "Loan actions are routed through transparent collateral and registry checks before execution.",
+    title: "No liquidation risk",
+    text: "Borrowers are never forced out of their BTC by market moves during the loan term.",
   },
   {
     icon: Blocks,
-    title: "Composable core",
-    text: "Built around Sui objects so positions, balances, and registry state stay inspectable.",
+    title: "Lender-defined terms",
+    text: "Lenders publish pre-defined loan terms before borrowers accept, so the repayment schedule is clear upfront.",
   },
   {
     icon: Gauge,
-    title: "Fast testnet flow",
-    text: "Open the testnet app, connect a wallet, and exercise the lending workflow directly.",
+    title: "Fixed interest",
+    text: "Loans use fixed terms and fixed interest, so rates do not change after the borrower accepts.",
   },
 ];
 
@@ -48,8 +48,8 @@ export default function App() {
           </p>
           <h1 id="hero-title">Nomad Finance</h1>
           <p className="lede">
-            Structured crypto-backed loans for teams testing how capital can move across Sui-native collateral,
-            principal assets, and transparent repayment flows.
+            BTC backed loans with lender-defined fixed terms, no liquidation risk for borrowers, and no changing
+            interest rates after acceptance.
           </p>
           <div className="hero-actions">
             <a className="primary-action" href={TESTNET_URL}>
@@ -69,7 +69,7 @@ export default function App() {
             <strong>Sui testnet</strong>
           </div>
           <div className="route-line">
-            <span>hBTC collateral</span>
+            <span>BTC collateral</span>
             <ArrowRight size={18} aria-hidden="true" />
             <span>USDC principal</span>
           </div>
