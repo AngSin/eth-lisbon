@@ -5,8 +5,10 @@ import {
   Banknote,
   CheckCircle2,
   Clock3,
+  Moon,
   RefreshCw,
   ShieldAlert,
+  Sun,
   Wallet,
   XCircle,
 } from "lucide-react";
@@ -26,6 +28,7 @@ import {
 import type { AppConfig, Loan, LoanOffer, RiskLevel, RiskScore } from "./types";
 
 type View = "borrow" | "lend" | "detail";
+type Theme = "light" | "dark";
 
 interface Notice {
   tone: "success" | "error";
@@ -50,6 +53,13 @@ const initialForm: LendForm = {
   btcUsd: "60000",
 };
 
+function initialTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  const stored = window.localStorage.getItem("nomad-theme");
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 function App() {
   const account = useCurrentAccount();
   const suiClient = useSuiClient();
@@ -62,6 +72,7 @@ function App() {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   async function refresh() {
     setLoading(true);
@@ -83,6 +94,11 @@ function App() {
     void refresh();
   }, [account?.address]);
 
+  useEffect(() => {
+    window.localStorage.setItem("nomad-theme", theme);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
   async function execute(action: () => Promise<{ digest?: string }>) {
     setNotice(null);
     try {
@@ -97,10 +113,10 @@ function App() {
   const shellReady = config !== null;
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setView("borrow")}>
-          <span className="brand-mark">N</span>
+          <img className="brand-logo" src="/logo.jpeg" alt="" />
           <span>Nomad Finance</span>
         </button>
         <nav className="nav-pills" aria-label="Primary">
@@ -109,6 +125,14 @@ function App() {
           <button className={view === "detail" ? "active" : ""} onClick={() => setView("detail")}>Detail</button>
         </nav>
         <div className="topbar-actions">
+          <button
+            className="icon-button"
+            onClick={() => setTheme((current) => (current === "light" ? "dark" : "light"))}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
           <button className="icon-button" onClick={() => void refresh()} title="Refresh">
             <RefreshCw size={18} />
           </button>
